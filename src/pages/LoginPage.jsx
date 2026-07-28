@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import mssnLogo from "../assets/MSSN_logo.jpg";
+import { Link } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff, ArrowRight, ShieldCheck } from "lucide-react";
 
 export default function LoginPage() {
@@ -15,7 +16,7 @@ export default function LoginPage() {
 
       {/* Top Header / Back Link */}
       <header className="relative z-10 max-w-7xl mx-auto w-full px-6 py-6 flex items-center justify-between">
-        <a href="/" className="flex items-center gap-3 group">
+        <Link to="/" className="flex items-center gap-3 group">
           <div className="w-10 h-10 rounded-xl overflow-hidden border border-emerald-200 bg-white p-0.5 shadow-sm group-hover:border-emerald-400 transition-colors">
             <img
               src={mssnLogo}
@@ -26,13 +27,13 @@ export default function LoginPage() {
           <span className="font-bold text-slate-900 tracking-wide text-sm group-hover:text-emerald-700 transition-colors">
             MSSN UDUS Portal
           </span>
-        </a>
-        <a
-          href="/register"
+        </Link>
+        <Link
+          to="/register"
           className="text-sm font-semibold text-emerald-700 hover:text-emerald-900 transition-colors"
         >
           Need an account? <span className="underline">Register</span>
-        </a>
+        </Link>
       </header>
 
       {/* Main Login Card Container */}
