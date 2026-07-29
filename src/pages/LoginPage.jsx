@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import mssnLogo from "../assets/MSSN_logo.jpg";
 import { Link } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff, ArrowRight, ShieldCheck } from "lucide-react";

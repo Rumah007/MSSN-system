@@ -261,7 +261,7 @@ export default function LandingPage() {
             </div>
             <p className="text-slate-500">
               Muslim Students' Society of Nigeria, Usmanu Danfodiyo University
-              Sokoto Chapter.
+              Sokoto Branch.
             </p>
           </div>
 
