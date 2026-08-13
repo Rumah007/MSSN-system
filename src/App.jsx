@@ -1,4 +1,8 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "./AuthContext"; // Update path if placed elsewhere
+import ProtectedRoute from "./ProtectedRoute"; // Update path if placed elsewhere
+
+// Public Pages
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
@@ -24,33 +28,39 @@ import ExcoAnnouncements from "./pages/executives/ExcoAnnouncements";
 
 const App = () => {
   return (
-    <Router>
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/about" element={<About />} />
-        <Route path="/feedback" element={<FeedbackPage />} />
-        <Route path="/media" element={<Media />} />
-        <Route path="/events" element={<EventsPage />} />
-        <Route path="/resources" element={<ResourcesPage />} />
+    <AuthProvider>
+      <Router>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/feedback" element={<FeedbackPage />} />
+          <Route path="/media" element={<Media />} />
+          <Route path="/events" element={<EventsPage />} />
+          <Route path="/resources" element={<ResourcesPage />} />
 
-        {/* Admin Routes */}
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="/admin/content" element={<AdminContentPage />} />
-        <Route path="/admin/feedback" element={<AdminFeedbackPage />} />
-        <Route path="/admin/members" element={<AdminMembersPage />} />
-        <Route path="/admin/events" element={<AdminEventsPage />} />
+          {/* Admin Protected Routes */}
+          <Route element={<ProtectedRoute requireAdmin={true} />}>
+            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/admin/content" element={<AdminContentPage />} />
+            <Route path="/admin/feedback" element={<AdminFeedbackPage />} />
+            <Route path="/admin/members" element={<AdminMembersPage />} />
+            <Route path="/admin/events" element={<AdminEventsPage />} />
+          </Route>
 
-        {/* Executive Routes */}
-        <Route path="/exco/dashboard" element={<ExcoDashboard />} />
-        <Route path="/exco/directory" element={<ExcoDirectory />} />
-        <Route path="/exco/programs" element={<ExcoPrograms />} />
-        {/* <Route path="/exco/attendance" element={<ExcoAttendance />} /> */}
-        <Route path="/exco/announcements" element={<ExcoAnnouncements />} />
-      </Routes>
-    </Router>
+          {/* Executive (Exco) Protected Routes */}
+          <Route element={<ProtectedRoute requireExco={true} />}>
+            <Route path="/exco/dashboard" element={<ExcoDashboard />} />
+            <Route path="/exco/directory" element={<ExcoDirectory />} />
+            <Route path="/exco/programs" element={<ExcoPrograms />} />
+            {/* <Route path="/exco/attendance" element={<ExcoAttendance />} /> */}
+            <Route path="/exco/announcements" element={<ExcoAnnouncements />} />
+          </Route>
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 };
 

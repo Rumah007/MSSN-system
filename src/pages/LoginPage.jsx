@@ -1,10 +1,79 @@
 import { useState } from "react";
 import mssnLogo from "../assets/MSSN_logo.jpg";
-import { Link } from "react-router-dom";
-import { Mail, Lock, Eye, EyeOff, ArrowRight, ShieldCheck } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { supabase } from "../supabaseClient";
+import {
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  ArrowRight,
+  AlertCircle,
+  X,
+} from "lucide-react";
 
 export default function LoginPage() {
+  const navigate = useNavigate();
+
+  // Form State
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  // UI State
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // Modal State for Error/Feedback
+  const [modal, setModal] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+  });
+
+  const closeModal = () => {
+    setModal({ isOpen: false, title: "", message: "" });
+  };
+
+  // Login Handler
+  const handleLogin = async (e) => {
+    e.preventDefault();
+
+    if (!email || !password) {
+      setModal({
+        isOpen: true,
+        title: "Missing Credentials",
+        message: "Please enter both your email address and password.",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Supabase Authentication Call
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password,
+      });
+
+      if (error) throw error;
+
+      // On success, redirect to dashboard or home
+      if (data.session) {
+        navigate("/");
+      }
+    } catch (error) {
+      setModal({
+        isOpen: true,
+        title: "Authentication Failed",
+        message:
+          error.message ||
+          "Invalid login credentials. Please check your email and password.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col justify-between selection:bg-emerald-200 selection:text-emerald-900 relative overflow-hidden">
@@ -57,7 +126,7 @@ export default function LoginPage() {
           </div>
 
           {/* Form UI */}
-          <form onSubmit={(e) => e.preventDefault()} className="space-y-5">
+          <form onSubmit={handleLogin} className="space-y-5">
             {/* Email Field */}
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold text-slate-700">
@@ -70,6 +139,8 @@ export default function LoginPage() {
                 />
                 <input
                   type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   placeholder="e.g. student@udusok.edu.ng"
                   className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all bg-white"
                 />
@@ -96,6 +167,8 @@ export default function LoginPage() {
                 />
                 <input
                   type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   className="w-full pl-10 pr-11 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all bg-white"
                 />
@@ -125,13 +198,47 @@ export default function LoginPage() {
             {/* Primary CTA */}
             <button
               type="submit"
-              className="w-full py-3.5 px-6 text-slate-950 font-bold bg-gradient-to-r from-emerald-400 via-emerald-400 to-lime-300 rounded-xl shadow-md shadow-emerald-500/10 hover:shadow-lg hover:shadow-emerald-500/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 text-sm"
+              disabled={loading}
+              className="w-full py-3.5 px-6 text-slate-950 font-bold bg-gradient-to-r from-emerald-400 via-emerald-400 to-lime-300 rounded-xl shadow-md shadow-emerald-500/10 hover:shadow-lg hover:shadow-emerald-500/20 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 text-sm"
             >
-              Sign In to Portal <ArrowRight size={18} />
+              {loading ? "Signing In..." : "Sign In to Portal"}{" "}
+              <ArrowRight size={18} />
             </button>
           </form>
         </div>
       </main>
+
+      {/* Response Modal (Error) */}
+      {modal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 relative space-y-4 text-center">
+            <button
+              onClick={closeModal}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto">
+              <AlertCircle size={28} />
+            </div>
+
+            <div>
+              <h3 className="text-base font-bold text-slate-900">
+                {modal.title}
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">{modal.message}</p>
+            </div>
+
+            <button
+              onClick={closeModal}
+              className="w-full py-2.5 rounded-xl text-xs font-bold text-white bg-slate-800 hover:bg-slate-900 transition-all"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Simple Footer */}
       <footer className="relative z-10 py-6 text-center text-xs text-slate-400">

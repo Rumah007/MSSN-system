@@ -1,12 +1,22 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import mssnLogo from "../assets/MSSN_logo.jpg";
-import { Menu, X } from "lucide-react";
+import { Menu, X, LogOut } from "lucide-react";
+import { useAuth } from "../AuthContext"; // Update path if placed elsewhere
 
 const NavBar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
 
   const closeMenu = () => setMobileMenuOpen(false);
+
+  // Sign out handler
+  const handleSignOut = async () => {
+    closeMenu();
+    await signOut();
+    navigate("/");
+  };
 
   return (
     <nav className="sticky top-0 z-50 border-b border-emerald-100 bg-white/90 backdrop-blur-md">
@@ -69,18 +79,30 @@ const NavBar = () => {
 
         {/* Desktop Call To Actions */}
         <div className="hidden md:flex items-center gap-3">
-          <Link
-            className="px-4 py-2 text-sm font-semibold text-emerald-700 hover:text-emerald-900 transition-colors"
-            to="/login"
-          >
-            Sign In
-          </Link>
-          <Link
-            className="px-5 py-2.5 text-sm font-semibold text-slate-900 bg-gradient-to-r from-emerald-400 to-lime-300 rounded-xl shadow-xs hover:shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
-            to="/register"
-          >
-            Join Portal
-          </Link>
+          {user ? (
+            <button
+              onClick={handleSignOut}
+              className="px-4 py-2 text-sm font-semibold text-rose-600 hover:text-rose-800 hover:bg-rose-50 border border-rose-200 rounded-xl transition-all flex items-center gap-2"
+            >
+              <LogOut size={16} />
+              Log Out
+            </button>
+          ) : (
+            <>
+              <Link
+                className="px-4 py-2 text-sm font-semibold text-emerald-700 hover:text-emerald-900 transition-colors"
+                to="/login"
+              >
+                Sign In
+              </Link>
+              <Link
+                className="px-5 py-2.5 text-sm font-semibold text-slate-900 bg-gradient-to-r from-emerald-400 to-lime-300 rounded-xl shadow-xs hover:shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                to="/register"
+              >
+                Join Portal
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Mobile Menu Button */}
@@ -143,20 +165,32 @@ const NavBar = () => {
 
           {/* Mobile CTAs */}
           <div className="pt-4 flex flex-col gap-2">
-            <Link
-              onClick={closeMenu}
-              className="w-full py-2.5 text-center text-emerald-700 border border-emerald-200 rounded-xl font-medium"
-              to="/login"
-            >
-              Sign In
-            </Link>
-            <Link
-              onClick={closeMenu}
-              className="w-full py-2.5 text-center text-slate-900 bg-gradient-to-r from-emerald-400 to-lime-300 rounded-xl font-semibold"
-              to="/register"
-            >
-              Join Portal
-            </Link>
+            {user ? (
+              <button
+                onClick={handleSignOut}
+                className="w-full py-2.5 text-center text-rose-600 border border-rose-200 bg-rose-50/50 rounded-xl font-medium flex items-center justify-center gap-2"
+              >
+                <LogOut size={16} />
+                Log Out
+              </button>
+            ) : (
+              <>
+                <Link
+                  onClick={closeMenu}
+                  className="w-full py-2.5 text-center text-emerald-700 border border-emerald-200 rounded-xl font-medium"
+                  to="/login"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  onClick={closeMenu}
+                  className="w-full py-2.5 text-center text-slate-900 bg-gradient-to-r from-emerald-400 to-lime-300 rounded-xl font-semibold"
+                  to="/register"
+                >
+                  Join Portal
+                </Link>
+              </>
+            )}
           </div>
         </div>
       )}

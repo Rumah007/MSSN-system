@@ -8,7 +8,7 @@ import {
   FileCode,
   Music,
   BookOpen,
-  CheckCircle,
+
   Menu,
   Plus,
   X,

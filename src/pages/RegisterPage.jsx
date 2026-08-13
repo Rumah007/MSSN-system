@@ -1,20 +1,112 @@
 import React, { useState } from "react";
 import mssnLogo from "../assets/MSSN_logo.jpg";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { supabase } from "../supabaseClient";
 import {
   User,
   Mail,
-  Phone,
-  BookOpen,
+  Building,
   Lock,
   Eye,
   EyeOff,
   ArrowRight,
-  Info,
+  CheckCircle2,
+  AlertCircle,
+  X,
 } from "lucide-react";
 
 export default function RegisterPage() {
+  const navigate = useNavigate();
+
+  // Form State Variables
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [department, setDepartment] = useState("");
+  const [password, setPassword] = useState("");
+
+  // UI Helper States
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // Notification Modal State
+  const [modal, setModal] = useState({
+    isOpen: false,
+    type: "", // 'success' or 'error'
+    title: "",
+    message: "",
+  });
+
+  // Helper function to close modal
+  const closeModal = () => {
+    setModal({ isOpen: false, type: "", title: "", message: "" });
+    if (modal.type === "success") {
+      navigate("/login");
+    }
+  };
+
+  // Sign Up Handler
+  const handleRegister = async (e) => {
+    e.preventDefault();
+
+    // Basic Client-side Validation
+    if (!fullName || !email || !department || !password) {
+      setModal({
+        isOpen: true,
+        type: "error",
+        title: "Missing Information",
+        message: "Please fill in all fields before submitting.",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Step 1: Sign up user in Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: email,
+        password: password,
+      });
+
+      if (authError) throw authError;
+
+      // Step 2: Insert additional user profile data into 'profiles' table
+      if (authData.user) {
+        const { error: profileError } = await supabase.from("profiles").insert([
+          {
+            id: authData.user.id,
+            full_name: fullName,
+            email: email,
+            department: department,
+            is_admin: false,
+            is_exco: false,
+          },
+        ]);
+
+        if (profileError) throw profileError;
+      }
+
+      // Step 3: Trigger Success Feedback
+      setModal({
+        isOpen: true,
+        type: "success",
+        title: "Registration Successful!",
+        message:
+          "Your account has been created successfully. You can now proceed to log in.",
+      });
+    } catch (error) {
+      // Catch and display any error (Auth or Database)
+      setModal({
+        isOpen: true,
+        type: "error",
+        title: "Registration Failed",
+        message:
+          error.message || "An unexpected error occurred. Please try again.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col justify-between selection:bg-emerald-200 selection:text-emerald-900 relative overflow-hidden">
@@ -62,17 +154,17 @@ export default function RegisterPage() {
               Join MSSN UDUS Portal
             </h1>
             <p className="text-sm text-slate-500 max-w-md mx-auto">
-              Create your account to access event registrations, study
+              Create your account to access event announcements, lecture
               materials, and branch broadcasts
             </p>
           </div>
 
           {/* Form */}
-          <form onSubmit={(e) => e.preventDefault()} className="space-y-5">
+          <form onSubmit={handleRegister} className="space-y-5">
             {/* Full Name */}
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold text-slate-700">
-                Full Name (Surname First)
+                Full Name
               </label>
               <div className="relative">
                 <User
@@ -81,81 +173,51 @@ export default function RegisterPage() {
                 />
                 <input
                   type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
                   placeholder="e.g. Abubakar Fatima Bello"
                   className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all bg-white"
                 />
               </div>
             </div>
 
-            {/* Email & Phone (Grid) */}
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-700">
-                  Email Address
-                </label>
-                <div className="relative">
-                  <Mail
-                    className="absolute left-3.5 top-3.5 text-slate-400"
-                    size={18}
-                  />
-                  <input
-                    type="email"
-                    placeholder="student@udusok.edu.ng"
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all bg-white"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-700">
-                  Phone Number (WhatsApp)
-                </label>
-                <div className="relative">
-                  <Phone
-                    className="absolute left-3.5 top-3.5 text-slate-400"
-                    size={18}
-                  />
-                  <input
-                    type="tel"
-                    placeholder="08012345678"
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all bg-white"
-                  />
-                </div>
+            {/* Email Address */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-slate-700">
+                Email Address
+              </label>
+              <div className="relative">
+                <Mail
+                  className="absolute left-3.5 top-3.5 text-slate-400"
+                  size={18}
+                />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="user@udusok.edu.ng"
+                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all bg-white"
+                />
               </div>
             </div>
 
-            {/* Reg Number & Faculty/Dept (Grid) */}
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-700">
-                  Matric / Admission Number
-                </label>
-                <div className="relative">
-                  <BookOpen
-                    className="absolute left-3.5 top-3.5 text-slate-400"
-                    size={18}
-                  />
-                  <input
-                    type="text"
-                    placeholder="2110203001"
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all bg-white"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-700">
-                  Faculty / Level
-                </label>
-                <select className="w-full px-3.5 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all bg-white">
-                  <option value="">Select Level</option>
-                  <option value="100">100 Level</option>
-                  <option value="200">200 Level</option>
-                  <option value="300">300 Level</option>
-                  <option value="400">400 Level</option>
-                  <option value="500">500 Level+</option>
-                  <option value="pg">Postgraduate / Staff</option>
-                </select>
+            {/* Department */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-slate-700">
+                Department
+              </label>
+              <div className="relative">
+                <Building
+                  className="absolute left-3.5 top-3.5 text-slate-400"
+                  size={18}
+                />
+                <input
+                  type="text"
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value)}
+                  placeholder="e.g. Computer Science"
+                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all bg-white"
+                />
               </div>
             </div>
 
@@ -171,7 +233,9 @@ export default function RegisterPage() {
                 />
                 <input
                   type={showPassword ? "text" : "password"}
-                  placeholder="Minimum 8 characters"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Minimum 6 characters"
                   className="w-full pl-10 pr-11 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all bg-white"
                 />
                 <button
@@ -187,13 +251,57 @@ export default function RegisterPage() {
             {/* Submit CTA */}
             <button
               type="submit"
-              className="w-full py-3.5 px-6 text-slate-950 font-bold bg-gradient-to-r from-emerald-400 via-emerald-400 to-lime-300 rounded-xl shadow-md shadow-emerald-500/10 hover:shadow-lg hover:shadow-emerald-500/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 text-sm"
+              disabled={loading}
+              className="w-full py-3.5 px-6 text-slate-950 font-bold bg-gradient-to-r from-emerald-400 via-emerald-400 to-lime-300 rounded-xl shadow-md shadow-emerald-500/10 hover:shadow-lg hover:shadow-emerald-500/20 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 text-sm"
             >
-              Create Account <ArrowRight size={18} />
+              {loading ? "Creating Account..." : "Create Account"}{" "}
+              <ArrowRight size={18} />
             </button>
           </form>
         </div>
       </main>
+
+      {/* Response Modal (Success / Error) */}
+      {modal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 relative space-y-4 text-center">
+            <button
+              onClick={closeModal}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+            >
+              <X size={18} />
+            </button>
+
+            {modal.type === "success" ? (
+              <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
+                <CheckCircle2 size={28} />
+              </div>
+            ) : (
+              <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto">
+                <AlertCircle size={28} />
+              </div>
+            )}
+
+            <div>
+              <h3 className="text-base font-bold text-slate-900">
+                {modal.title}
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">{modal.message}</p>
+            </div>
+
+            <button
+              onClick={closeModal}
+              className={`w-full py-2.5 rounded-xl text-xs font-bold text-white transition-all ${
+                modal.type === "success"
+                  ? "bg-emerald-600 hover:bg-emerald-700"
+                  : "bg-slate-800 hover:bg-slate-900"
+              }`}
+            >
+              {modal.type === "success" ? "Proceed to Sign In" : "Try Again"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="relative z-10 py-6 text-center text-xs text-slate-400">
