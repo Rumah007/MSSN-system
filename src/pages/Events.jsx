@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import NavBar from "../components/NavBar";
+import { supabase } from "../supabaseClient"; // Adjust path if needed
 import {
   Calendar,
   MapPin,
@@ -9,74 +10,157 @@ import {
   Tag,
   Search,
   Sparkles,
+  Loader2,
 } from "lucide-react";
 
 export default function EventsPage() {
   const [filter, setFilter] = useState("upcoming"); // 'upcoming' | 'past'
+  const [events, setEvents] = useState([]);
   const [registeredEvents, setRegisteredEvents] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [actionLoadingId, setActionLoadingId] = useState(null);
+  const [user, setUser] = useState(null);
 
-  // Sample Events Data
-  const events = [
-    {
-      id: 1,
-      title: "Annual Islamic Orientation for Freshers",
-      category: "Orientation",
-      date: "Aug 12, 2026",
-      time: "09:00 AM - 01:00 PM",
-      location: "Convocation Arena, Main Campus",
-      speaker: "Ustadh Abdullahi Musa & Panel",
-      description:
-        "An introductory session designed to help new students navigate campus life, balance academics with spirituality, and build brotherhood.",
-      isUpcoming: true,
-      seatsLeft: 45,
-    },
-    {
-      id: 2,
-      title: "Academic Excellence Seminar & CGPA Workshop",
-      category: "Academic",
-      date: "Aug 28, 2026",
-      time: "04:00 PM - 06:30 PM",
-      location: "MH1 Lecture Hall",
-      speaker: "Dr. Farooq Umar & First Class Alumni",
-      description:
-        "Learn proven study strategies, exam techniques, time management, and course registration tips tailored for UDUS faculties.",
-      isUpcoming: true,
-      seatsLeft: 12,
-    },
-    {
-      id: 3,
-      title: "Sisters' Annual Circle & Empowerment Summit",
-      category: "Sisters Circle",
-      date: "Sep 15, 2026",
-      time: "10:00 AM - 02:00 PM",
-      location: "Auditorium B, City Campus",
-      speaker: "Dr. Zainab Al-Ghazali",
-      description:
-        "A dedicated gathering addressing female student welfare, health, Islamic modesty, and career progression.",
-      isUpcoming: true,
-      seatsLeft: 80,
-    },
-    {
-      id: 4,
-      title: "Special Pre-Exam Halqah & Supplication Hour",
-      category: "Halqah",
-      date: "Feb 10, 2026",
-      time: "04:30 PM - 06:00 PM",
-      location: "UDUS Central Mosque",
-      speaker: "Sheikh Kabiru Dan-Tsoho",
-      description:
-        "A spiritual refresher focused on exam anxiety management, ethics of test taking, and collective dua.",
-      isUpcoming: false,
-      seatsLeft: 0,
-    },
-  ];
+  // Fetch events and existing RSVPs for current user
+  const fetchEventsData = useCallback(async () => {
+    setLoading(true);
+    try {
+      // 1. Get Current User Session
+      const {
+        data: { user: currentUser },
+      } = await supabase.auth.getUser();
+      setUser(currentUser);
 
-  const handleRegister = (eventId) => {
-    if (registeredEvents.includes(eventId)) {
-      setRegisteredEvents(registeredEvents.filter((id) => id !== eventId));
-    } else {
-      setRegisteredEvents([...registeredEvents, eventId]);
+      // 2. Fetch Events
+      const { data: eventsData, error: eventsErr } = await supabase
+        .from("events")
+        .select("*")
+        .order("event_date", { ascending: true });
+
+      if (eventsErr) throw eventsErr;
+
+      // 3. Fetch User's RSVPs if logged in
+      if (currentUser) {
+        const { data: rsvpData, error: rsvpErr } = await supabase
+          .from("event_rsvps")
+          .select("event_id")
+          .eq("user_id", currentUser.id);
+
+        if (!rsvpErr && rsvpData) {
+          setRegisteredEvents(rsvpData.map((item) => item.event_id));
+        }
+      }
+
+      if (eventsData) {
+        const formattedEvents = eventsData.map((ev) => {
+          const eventDateObj = new Date(ev.event_date);
+          const now = new Date();
+
+          return {
+            id: ev.id,
+            title: ev.title,
+            category: ev.category || "General",
+            date: eventDateObj.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            }),
+            time:
+              ev.event_time ||
+              eventDateObj.toLocaleTimeString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            location: ev.location || "UDUS Campus",
+            speaker: ev.speaker || "Guest Speaker",
+            description: ev.description || "",
+            isUpcoming: eventDateObj >= now,
+            seatsLeft: ev.seats_left ?? 0,
+            rawDate: eventDateObj,
+          };
+        });
+
+        setEvents(formattedEvents);
+      }
+    } catch (err) {
+      console.error("Error fetching events:", err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchEventsData();
+  }, [fetchEventsData]);
+
+  // Handle RSVP toggle in Supabase
+  const handleRegister = async (eventId, seatsLeft) => {
+    if (!user) {
+      alert("Please log in to reserve a seat for this program.");
+      return;
+    }
+
+    setActionLoadingId(eventId);
+    const isRegistered = registeredEvents.includes(eventId);
+
+    try {
+      if (isRegistered) {
+        // Cancel RSVP
+        const { error: cancelErr } = await supabase
+          .from("event_rsvps")
+          .delete()
+          .eq("event_id", eventId)
+          .eq("user_id", user.id);
+
+        if (cancelErr) throw cancelErr;
+
+        // Restore seat count in database
+        await supabase
+          .from("events")
+          .update({ seats_left: seatsLeft + 1 })
+          .eq("id", eventId);
+
+        setRegisteredEvents((prev) => prev.filter((id) => id !== eventId));
+        setEvents((prev) =>
+          prev.map((ev) =>
+            ev.id === eventId ? { ...ev, seatsLeft: ev.seatsLeft + 1 } : ev,
+          ),
+        );
+      } else {
+        // Check seat availability
+        if (seatsLeft <= 0) {
+          alert("Sorry, no seats remaining for this program.");
+          return;
+        }
+
+        // Add RSVP
+        const { error: rsvpErr } = await supabase
+          .from("event_rsvps")
+          .insert([{ event_id: eventId, user_id: user.id }]);
+
+        if (rsvpErr) throw rsvpErr;
+
+        // Decrement seat count in database
+        await supabase
+          .from("events")
+          .update({ seats_left: Math.max(0, seatsLeft - 1) })
+          .eq("id", eventId);
+
+        setRegisteredEvents((prev) => [...prev, eventId]);
+        setEvents((prev) =>
+          prev.map((ev) =>
+            ev.id === eventId
+              ? { ...ev, seatsLeft: Math.max(0, ev.seatsLeft - 1) }
+              : ev,
+          ),
+        );
+      }
+    } catch (err) {
+      console.error("Error updating RSVP:", err.message);
+      alert("Failed to update reservation. Please try again.");
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
@@ -85,7 +169,8 @@ export default function EventsPage() {
       filter === "upcoming" ? ev.isUpcoming : !ev.isUpcoming;
     const matchesSearch =
       ev.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      ev.category.toLowerCase().includes(searchQuery.toLowerCase());
+      ev.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      ev.speaker.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesFilter && matchesSearch;
   });
 
@@ -104,16 +189,16 @@ export default function EventsPage() {
           </h1>
           <p className="text-slate-600 text-sm leading-relaxed">
             Stay updated with upcoming Islamic lectures, academic seminars,
-            orientation sessions, and workshops.
+            orientation sessions, and workshops across UDUS campuses.
           </p>
         </div>
 
-        {/* Filter Bar */}
+        {/* Filter & Search Bar */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-200 pb-4">
           <div className="flex items-center gap-2 p-1 bg-slate-200/60 rounded-xl w-full sm:w-auto">
             <button
               onClick={() => setFilter("upcoming")}
-              className={`flex-1 sm:flex-none px-5 py-2 rounded-lg text-xs font-bold transition-all ${
+              className={`flex-1 sm:flex-none px-5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 filter === "upcoming"
                   ? "bg-white text-emerald-800 shadow-xs"
                   : "text-slate-600 hover:text-slate-900"
@@ -123,7 +208,7 @@ export default function EventsPage() {
             </button>
             <button
               onClick={() => setFilter("past")}
-              className={`flex-1 sm:flex-none px-5 py-2 rounded-lg text-xs font-bold transition-all ${
+              className={`flex-1 sm:flex-none px-5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 filter === "past"
                   ? "bg-white text-emerald-800 shadow-xs"
                   : "text-slate-600 hover:text-slate-900"
@@ -148,11 +233,19 @@ export default function EventsPage() {
           </div>
         </div>
 
-        {/* Events List */}
-        {filteredEvents.length > 0 ? (
+        {/* Dynamic Events List */}
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3 bg-white rounded-2xl border border-slate-200">
+            <Loader2 className="animate-spin text-emerald-600" size={28} />
+            <p className="text-xs font-medium">
+              Fetching scheduled programs...
+            </p>
+          </div>
+        ) : filteredEvents.length > 0 ? (
           <div className="space-y-6">
             {filteredEvents.map((event) => {
               const isRegistered = registeredEvents.includes(event.id);
+              const isProcessing = actionLoadingId === event.id;
 
               return (
                 <div
@@ -181,7 +274,7 @@ export default function EventsPage() {
                       {event.description}
                     </p>
 
-                    {/* Metadata */}
+                    {/* Metadata Grid */}
                     <div className="grid sm:grid-cols-2 gap-2 text-xs text-slate-500 pt-2 border-t border-slate-100">
                       <div className="flex items-center gap-1.5">
                         <Calendar
@@ -218,14 +311,22 @@ export default function EventsPage() {
                   {event.isUpcoming && (
                     <div className="flex md:flex-col justify-between md:justify-center items-center md:items-end gap-3 md:border-l md:border-slate-100 md:pl-6 pt-4 md:pt-0 border-t border-slate-100 shrink-0">
                       <button
-                        onClick={() => handleRegister(event.id)}
-                        className={`w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                        disabled={isProcessing}
+                        onClick={() =>
+                          handleRegister(event.id, event.seatsLeft)
+                        }
+                        className={`w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                           isRegistered
-                            ? "bg-emerald-900 text-white"
+                            ? "bg-emerald-900 text-white hover:bg-emerald-950"
                             : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
-                        }`}
+                        } ${isProcessing ? "opacity-75 cursor-not-allowed" : ""}`}
                       >
-                        {isRegistered ? (
+                        {isProcessing ? (
+                          <>
+                            <Loader2 size={14} className="animate-spin" />
+                            <span>Updating...</span>
+                          </>
+                        ) : isRegistered ? (
                           <>
                             <CheckCircle2 size={14} />
                             <span>Registered</span>
@@ -250,11 +351,11 @@ export default function EventsPage() {
             })}
           </div>
         ) : (
-          <div className="text-center py-16 bg-white rounded-2xl border border-slate-200">
-            <p className="text-sm font-semibold text-slate-600">
+          <div className="text-center py-16 bg-white rounded-2xl border border-slate-200 space-y-1">
+            <p className="text-sm font-semibold text-slate-700">
               No events found
             </p>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-slate-400">
               Check back soon for new program announcements.
             </p>
           </div>
