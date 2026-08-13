@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "../../supabaseClient"; // Adjust path to match your project setup
 import AdminSidebar from "../admin/components/AdminSidebar";
 import {
   Users,
@@ -7,13 +8,13 @@ import {
   Download,
   Mail,
   Phone,
-  GraduationCap,
   Menu,
   CheckCircle2,
   XCircle,
-  ChevronLeft,
-  ChevronRight,
-  UserCheck,
+  ShieldCheck,
+  UserPlus,
+  X,
+  Loader2,
 } from "lucide-react";
 
 export default function AdminMembersPage() {
@@ -22,71 +23,116 @@ export default function AdminMembersPage() {
   const [departmentFilter, setDepartmentFilter] = useState("All");
   const [levelFilter, setLevelFilter] = useState("All");
 
-  // Sample Registered Students Roster
-  const [members, setMembers] = useState([
-    {
-      id: "MEM-001",
-      name: "Usman Ibrahim",
-      matricNo: "UDUS/CS/2021/0104",
-      department: "Computer Science",
-      level: "400L",
-      email: "usman.i@student.udus.edu.ng",
-      phone: "+234 803 123 4567",
-      status: "Active",
-      joinedDate: "2024-11-12",
-    },
-    {
-      id: "MEM-002",
-      name: "Fatima Zainab Bello",
-      matricNo: "UDUS/BCH/2022/0088",
-      department: "Biochemistry",
-      level: "300L",
-      email: "zainab.b@student.udus.edu.ng",
-      phone: "+234 814 987 6543",
-      status: "Active",
-      joinedDate: "2025-01-15",
-    },
-    {
-      id: "MEM-003",
-      name: "Ahmadu Abubakar",
-      matricNo: "UDUS/PHY/2023/0019",
-      department: "Physics",
-      level: "200L",
-      email: "ahmadu.p@student.udus.edu.ng",
-      phone: "+234 902 334 5566",
-      status: "Pending",
-      joinedDate: "2026-02-01",
-    },
-    {
-      id: "MEM-004",
-      name: "Mariam Aliyu",
-      matricNo: "UDUS/MBBS/2020/0052",
-      department: "Medicine & Surgery",
-      level: "500L",
-      email: "m.aliyu@student.udus.edu.ng",
-      phone: "+234 708 112 2334",
-      status: "Active",
-      joinedDate: "2024-09-05",
-    },
-    {
-      id: "MEM-005",
-      name: "Kabir Umar",
-      matricNo: "UDUS/ECO/2022/0142",
-      department: "Economics",
-      level: "300L",
-      email: "kabir.eco@student.udus.edu.ng",
-      phone: "+234 811 554 6677",
-      status: "Active",
-      joinedDate: "2025-03-20",
-    },
-  ]);
+  const [members, setMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [updatingId, setUpdatingId] = useState(null);
+
+  // Modal State for Promoting Member to Exco
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [excoRoleInput, setExcoRoleInput] = useState("");
+  const [isPromoteModalOpen, setIsPromoteModalOpen] = useState(false);
+
+  // Fetch profiles from Supabase
+  const fetchMembers = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setMembers(data || []);
+    } catch (err) {
+      console.error("Error fetching profiles:", err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMembers();
+  }, []);
+
+  // Update Exco status in Supabase
+  const handlePromoteToExco = async () => {
+    if (!selectedMember || !excoRoleInput.trim()) return;
+
+    setUpdatingId(selectedMember.id);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          is_exco: true,
+          exco_role: excoRoleInput.trim(),
+        })
+        .eq("id", selectedMember.id);
+
+      if (error) throw error;
+
+      setMembers((prev) =>
+        prev.map((m) =>
+          m.id === selectedMember.id
+            ? { ...m, is_exco: true, exco_role: excoRoleInput.trim() }
+            : m,
+        ),
+      );
+      closePromoteModal();
+    } catch (err) {
+      console.error("Failed to promote user:", err.message);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  // Revoke Exco status
+  const handleRevokeExco = async (id) => {
+    setUpdatingId(id);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          is_exco: false,
+          exco_role: null,
+        })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      setMembers((prev) =>
+        prev.map((m) =>
+          m.id === id ? { ...m, is_exco: false, exco_role: null } : m,
+        ),
+      );
+    } catch (err) {
+      console.error("Failed to revoke Exco role:", err.message);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const openPromoteModal = (member) => {
+    setSelectedMember(member);
+    setExcoRoleInput(member.exco_role || "");
+    setIsPromoteModalOpen(true);
+  };
+
+  const closePromoteModal = () => {
+    setSelectedMember(null);
+    setExcoRoleInput("");
+    setIsPromoteModalOpen(false);
+  };
 
   // Filtering Logic
   const filteredMembers = members.filter((member) => {
     const matchesSearch =
-      member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.matricNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.email.toLowerCase().includes(searchQuery.toLowerCase());
+      (member.full_name || "")
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase()) ||
+      (member.matric_number || "")
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase()) ||
+      (member.email || "").toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesDept =
       departmentFilter === "All" || member.department === departmentFilter;
@@ -95,22 +141,10 @@ export default function AdminMembersPage() {
     return matchesSearch && matchesDept && matchesLevel;
   });
 
-  const toggleMemberStatus = (id) => {
-    setMembers(
-      members.map((m) =>
-        m.id === id
-          ? { ...m, status: m.status === "Active" ? "Pending" : "Active" }
-          : m,
-      ),
-    );
-  };
-
   return (
     <div className="min-h-screen bg-slate-100 flex text-slate-800 font-sans">
-      {/* Reusable Sidebar */}
       <AdminSidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
-      {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
         {/* Mobile Header */}
         <header className="md:hidden bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-30">
@@ -126,22 +160,21 @@ export default function AdminMembersPage() {
             </span>
           </div>
           <span className="text-xs px-2.5 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-full border border-emerald-100">
-            Exco
+            Admin Portal
           </span>
         </header>
 
-        {/* Content Body */}
+        {/* Main Content Area */}
         <main className="p-4 sm:p-8 space-y-6 max-w-6xl mx-auto w-full">
           {/* Header Title & Export Action */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
             <div>
               <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 flex items-center gap-2">
                 <Users className="text-emerald-600" size={24} />
-                <span>Student Directory</span>
+                <span>Student & Executive Roster</span>
               </h1>
               <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                View registered members, check matric numbers, and verify
-                student status.
+                Manage members, assign executive roles, and review profiles.
               </p>
             </div>
             <button className="flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer">
@@ -154,26 +187,24 @@ export default function AdminMembersPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
               <p className="text-xs text-slate-500 font-medium">
-                Total Registered
+                Total Profiles
               </p>
               <h3 className="text-xl font-extrabold text-slate-900 mt-1">
                 {members.length}
               </h3>
             </div>
             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-              <p className="text-xs text-slate-500 font-medium">
-                Active Members
-              </p>
+              <p className="text-xs text-slate-500 font-medium">Active Excos</p>
               <h3 className="text-xl font-extrabold text-emerald-600 mt-1">
-                {members.filter((m) => m.status === "Active").length}
+                {members.filter((m) => m.is_exco).length}
               </h3>
             </div>
             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
               <p className="text-xs text-slate-500 font-medium">
-                Pending Review
+                General Students
               </p>
-              <h3 className="text-xl font-extrabold text-amber-600 mt-1">
-                {members.filter((m) => m.status === "Pending").length}
+              <h3 className="text-xl font-extrabold text-slate-700 mt-1">
+                {members.filter((m) => !m.is_exco).length}
               </h3>
             </div>
             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
@@ -189,7 +220,6 @@ export default function AdminMembersPage() {
           {/* Search & Filtering Control Bar */}
           <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
             <div className="flex flex-col md:flex-row items-center gap-3">
-              {/* Search Bar */}
               <div className="relative flex-1 w-full">
                 <Search
                   size={16}
@@ -204,7 +234,6 @@ export default function AdminMembersPage() {
                 />
               </div>
 
-              {/* Department Dropdown */}
               <div className="flex items-center gap-2 w-full md:w-auto">
                 <Filter
                   size={14}
@@ -223,7 +252,6 @@ export default function AdminMembersPage() {
                   <option value="Economics">Economics</option>
                 </select>
 
-                {/* Level Dropdown */}
                 <select
                   value={levelFilter}
                   onChange={(e) => setLevelFilter(e.target.value)}
@@ -250,12 +278,27 @@ export default function AdminMembersPage() {
                     <th className="px-5 py-3.5">Matric No</th>
                     <th className="px-5 py-3.5">Dept & Level</th>
                     <th className="px-5 py-3.5">Contact</th>
-                    <th className="px-5 py-3.5">Status</th>
-                    <th className="px-5 py-3.5 text-right">Actions</th>
+                    <th className="px-5 py-3.5">Role / Status</th>
+                    <th className="px-5 py-3.5 text-right">Exco Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredMembers.length === 0 ? (
+                  {loading ? (
+                    <tr>
+                      <td
+                        colSpan="6"
+                        className="px-5 py-10 text-center text-slate-400"
+                      >
+                        <div className="flex justify-center items-center gap-2">
+                          <Loader2
+                            size={16}
+                            className="animate-spin text-emerald-600"
+                          />
+                          <span>Loading database roster...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : filteredMembers.length === 0 ? (
                     <tr>
                       <td
                         colSpan="6"
@@ -273,29 +316,32 @@ export default function AdminMembersPage() {
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center shrink-0">
-                              {member.name.charAt(0)}
+                              {(member.full_name || "U").charAt(0)}
                             </div>
                             <div>
                               <p className="font-extrabold text-slate-900">
-                                {member.name}
+                                {member.full_name}
                               </p>
                               <p className="text-[10px] text-slate-400">
-                                Joined {member.joinedDate}
+                                Registered{" "}
+                                {new Date(
+                                  member.created_at,
+                                ).toLocaleDateString()}
                               </p>
                             </div>
                           </div>
                         </td>
 
                         <td className="px-5 py-4 font-mono font-semibold text-slate-700">
-                          {member.matricNo}
+                          {member.matric_number || "N/A"}
                         </td>
 
                         <td className="px-5 py-4">
                           <p className="font-medium text-slate-800">
-                            {member.department}
+                            {member.department || "Unassigned"}
                           </p>
                           <span className="inline-block mt-0.5 px-2 py-0.2 bg-slate-100 text-slate-600 font-bold text-[10px] rounded-md">
-                            {member.level}
+                            {member.level || "N/A"}
                           </span>
                         </td>
 
@@ -304,38 +350,49 @@ export default function AdminMembersPage() {
                             <Mail size={12} className="text-slate-400" />
                             <span>{member.email}</span>
                           </div>
-                          <div className="flex items-center gap-1.5 text-slate-500 text-[11px]">
-                            <Phone size={12} className="text-slate-400" />
-                            <span>{member.phone}</span>
-                          </div>
+                          {member.phone && (
+                            <div className="flex items-center gap-1.5 text-slate-500 text-[11px]">
+                              <Phone size={12} className="text-slate-400" />
+                              <span>{member.phone}</span>
+                            </div>
+                          )}
                         </td>
 
                         <td className="px-5 py-4">
-                          <span
-                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
-                              member.status === "Active"
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-                                : "bg-amber-50 text-amber-700 border-amber-100"
-                            }`}
-                          >
-                            {member.status === "Active" ? (
-                              <CheckCircle2 size={12} />
-                            ) : (
-                              <XCircle size={12} />
-                            )}
-                            {member.status}
-                          </span>
+                          {member.is_exco ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border bg-emerald-50 text-emerald-700 border-emerald-100">
+                              <ShieldCheck size={12} />
+                              {member.exco_role || "Executive"}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border bg-slate-50 text-slate-600 border-slate-200">
+                              Student Member
+                            </span>
+                          )}
                         </td>
 
                         <td className="px-5 py-4 text-right">
-                          <button
-                            onClick={() => toggleMemberStatus(member.id)}
-                            className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-700 transition-all cursor-pointer"
-                          >
-                            {member.status === "Active"
-                              ? "Set Pending"
-                              : "Approve"}
-                          </button>
+                          {updatingId === member.id ? (
+                            <Loader2
+                              size={16}
+                              className="animate-spin text-emerald-600 inline-block"
+                            />
+                          ) : member.is_exco ? (
+                            <button
+                              onClick={() => handleRevokeExco(member.id)}
+                              className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 transition-all cursor-pointer"
+                            >
+                              Revoke Exco
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => openPromoteModal(member)}
+                              className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-all cursor-pointer inline-flex items-center gap-1"
+                            >
+                              <UserPlus size={12} />
+                              Make Exco
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))
@@ -346,6 +403,65 @@ export default function AdminMembersPage() {
           </div>
         </main>
       </div>
+
+      {/* Exco Promotion Modal */}
+      {isPromoteModalOpen && selectedMember && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
+                <ShieldCheck className="text-emerald-600" size={18} />
+                Assign Executive Role
+              </h3>
+              <button
+                onClick={closePromoteModal}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <p className="text-slate-600">
+                You are setting{" "}
+                <strong className="text-slate-900">
+                  {selectedMember.full_name}
+                </strong>{" "}
+                as an executive member.
+              </p>
+
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">
+                  Executive Role / Title
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. President, Director of Software, PRO"
+                  value={excoRoleInput}
+                  onChange={(e) => setExcoRoleInput(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                onClick={closePromoteModal}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePromoteToExco}
+                disabled={!excoRoleInput.trim()}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs transition-all flex items-center gap-1.5"
+              >
+                Confirm Promotion
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

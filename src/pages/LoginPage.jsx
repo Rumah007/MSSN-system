@@ -35,6 +35,7 @@ export default function LoginPage() {
   };
 
   // Login Handler
+  // 1. Import useAuth or fetch the profile directly after sign-in
   const handleLogin = async (e) => {
     e.preventDefault();
 
@@ -50,17 +51,32 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // Supabase Authentication Call
+      // 1. Supabase Authentication Call
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: email,
-        password: password,
+        email,
+        password,
       });
 
       if (error) throw error;
 
-      // On success, redirect to dashboard or home
       if (data.session) {
-        navigate("/");
+        // 2. Fetch the user's profile to check role
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("is_admin, is_exco")
+          .eq("id", data.session.user.id)
+          .single();
+
+        if (profileError) throw profileError;
+
+        // 3. Conditional Redirect based on role
+        if (profile?.is_admin) {
+          navigate("/admin/dashboard");
+        } else if (profile?.is_exco) {
+          navigate("/exco/dashboard");
+        } else {
+          navigate("/"); // Regular member or default redirect
+        }
       }
     } catch (error) {
       setModal({
