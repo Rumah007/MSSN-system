@@ -6,6 +6,7 @@ import {
   FileText,
   Headphones,
   Image as ImageIcon,
+  Video,
   PlusCircle,
   Trash2,
   Menu,
@@ -16,7 +17,7 @@ import {
 
 export default function AdminContentPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("documents"); // "documents" | "audio" | "gallery"
+  const [activeTab, setActiveTab] = useState("documents"); // "documents" | "audio" | "gallery" | "videos"
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [resources, setResources] = useState([]);
@@ -74,6 +75,7 @@ export default function AdminContentPage() {
   const getResourceTypeFromTab = () => {
     if (activeTab === "documents") return "pdf";
     if (activeTab === "audio") return "audio";
+    if (activeTab === "videos") return "video";
     return "image";
   };
 
@@ -81,6 +83,7 @@ export default function AdminContentPage() {
   const getAcceptedFileTypes = () => {
     if (activeTab === "documents") return ".pdf,.doc,.docx";
     if (activeTab === "audio") return "audio/*";
+    if (activeTab === "videos") return "video/*";
     return "image/*";
   };
 
@@ -172,7 +175,9 @@ export default function AdminContentPage() {
         ? item.type === "pdf" || item.type === "doc"
         : activeTab === "audio"
           ? item.type === "audio"
-          : item.type === "image";
+          : activeTab === "videos"
+            ? item.type === "video"
+            : item.type === "image";
 
     const matchesSearch =
       item.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -220,7 +225,7 @@ export default function AdminContentPage() {
                 <span>Resources & Media Uploads</span>
               </h1>
               <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                Manage PDFs, lecture audio recordings, and gallery photos
+                Manage PDFs, audio recordings, gallery photos, and videos
                 directly on Supabase.
               </p>
             </div>
@@ -235,7 +240,9 @@ export default function AdminContentPage() {
                   ? "Document"
                   : activeTab === "audio"
                     ? "Audio"
-                    : "Photo"}
+                    : activeTab === "videos"
+                      ? "Video"
+                      : "Photo"}
               </span>
             </button>
           </div>
@@ -265,6 +272,18 @@ export default function AdminContentPage() {
               >
                 <Headphones size={16} />
                 <span>Audio Lectures ({getTabCounts(["audio"])})</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab("videos")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === "videos"
+                    ? "bg-emerald-600 text-white shadow-xs"
+                    : "bg-white text-slate-600 hover:bg-slate-200 border border-slate-200"
+                }`}
+              >
+                <Video size={16} />
+                <span>Videos ({getTabCounts(["video"])})</span>
               </button>
 
               <button
@@ -439,7 +458,64 @@ export default function AdminContentPage() {
                 </div>
               )}
 
-              {/* TAB 3: GALLERY */}
+              {/* TAB 3: VIDEOS */}
+              {activeTab === "videos" && (
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredResources.map((video) => (
+                    <div
+                      key={video.id}
+                      className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden group flex flex-col"
+                    >
+                      <div className="h-48 bg-slate-900 relative">
+                        <video
+                          src={video.file_url}
+                          controls
+                          className="w-full h-full object-cover"
+                        />
+                        <span className="absolute top-3 left-3 px-2.5 py-1 bg-slate-900/70 text-white font-bold text-[10px] rounded-full backdrop-blur-xs pointer-events-none">
+                          {video.category || "Video"}
+                        </span>
+                      </div>
+                      <div className="p-4 flex items-center justify-between gap-2 flex-1">
+                        <div>
+                          <h3 className="font-bold text-slate-900 text-xs">
+                            {video.title}
+                          </h3>
+                          {video.description && (
+                            <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
+                              {video.description}
+                            </p>
+                          )}
+                          <p className="text-[10px] text-slate-400 mt-1">
+                            Uploaded{" "}
+                            {new Date(video.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <a
+                            href={video.file_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                            title="Open Video"
+                          >
+                            <ExternalLink size={16} />
+                          </a>
+                          <button
+                            onClick={() => handleDeleteResource(video.id)}
+                            className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                            title="Delete Video"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* TAB 4: GALLERY */}
               {activeTab === "gallery" && (
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filteredResources.map((photo) => (
@@ -496,7 +572,9 @@ export default function AdminContentPage() {
                     ? "PDF Document"
                     : activeTab === "audio"
                       ? "Audio Lecture"
-                      : "Gallery Photo"}
+                      : activeTab === "videos"
+                        ? "Video"
+                        : "Gallery Photo"}
                 </span>
               </h3>
               <button
@@ -517,7 +595,7 @@ export default function AdminContentPage() {
                   type="text"
                   name="title"
                   required
-                  placeholder="e.g. 100L Physics Course Manual"
+                  placeholder="e.g. Course Intro Video"
                   value={formData.title}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
@@ -526,12 +604,12 @@ export default function AdminContentPage() {
 
               <div className="space-y-1">
                 <label className="font-bold text-slate-700">
-                  Description / Lecturer
+                  Description / Details
                 </label>
                 <input
                   type="text"
                   name="description"
-                  placeholder="e.g. Tafseer by Dr. Ahmad / Course guide overview"
+                  placeholder="e.g. Recorded overview session"
                   value={formData.description}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
