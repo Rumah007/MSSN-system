@@ -9,6 +9,7 @@ import {
   LogOut,
   X,
   BookOpen,
+  Megaphone,
 } from "lucide-react";
 
 export default function AdminSidebar({ sidebarOpen, setSidebarOpen }) {
@@ -24,6 +25,11 @@ export default function AdminSidebar({ sidebarOpen, setSidebarOpen }) {
     { name: "Events Management", path: "/admin/events", icon: Calendar },
     { name: "Uploads & Media", path: "/admin/content", icon: Upload },
     { name: "Student Feedback", path: "/admin/feedback", icon: MessageSquare },
+    {
+      name: "Announcements",
+      path: "/admin/announcements",
+      icon: Megaphone,
+    },
   ];
 
   return (

@@ -1,18 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Users,
   Search,
-  CheckCircle,
-  XCircle,
   Menu,
   GraduationCap,
   Mail,
-  Phone,
   Info,
   X,
   Building,
+  Loader2,
+  ShieldCheck,
 } from "lucide-react";
 import ExcoSidebar from "./components/ExcoSidebar";
+import { supabase } from "../../supabaseClient";
 
 export default function ExcoDirectory() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -20,87 +20,46 @@ export default function ExcoDirectory() {
   const [selectedLevel, setSelectedLevel] = useState("All");
   const [selectedStudent, setSelectedStudent] = useState(null);
 
-  // Sample Student & Member Records
-  const members = [
-    {
-      id: 1,
-      name: "Abdullah Usman",
-      matricNo: "21/104102",
-      department: "Computer Science",
-      faculty: "Physical Sciences",
-      level: "400L",
-      email: "abdullah@udus.edu.ng",
-      phone: "+234 812 345 6789",
-      role: "Member",
-      status: "Verified",
-      registeredDate: "2024-02-10",
-      wing: "Academic Wing",
-    },
-    {
-      id: 2,
-      name: "Fatima Kabir",
-      matricNo: "22/108304",
-      department: "Biochemistry",
-      faculty: "Life Sciences",
-      level: "300L",
-      email: "fatima.k@udus.edu.ng",
-      phone: "+234 803 456 7890",
-      role: "Exco Officer",
-      status: "Verified",
-      registeredDate: "2024-01-15",
-      wing: "Secretariat",
-    },
-    {
-      id: 3,
-      name: "Ibrahim Garba",
-      matricNo: "23/102011",
-      department: "Mathematics",
-      faculty: "Physical Sciences",
-      level: "200L",
-      email: "ibrahim.g@udus.edu.ng",
-      phone: "+234 814 567 8901",
-      role: "Member",
-      status: "Pending Verification",
-      registeredDate: "2026-05-12",
-      wing: "General",
-    },
-    {
-      id: 4,
-      name: "Aisha Bello",
-      matricNo: "20/101002",
-      department: "Microbiology",
-      faculty: "Life Sciences",
-      level: "400L",
-      email: "aisha.bello@udus.edu.ng",
-      phone: "+234 805 678 9012",
-      role: "Exco Officer",
-      status: "Verified",
-      registeredDate: "2023-11-20",
-      wing: "Media Unit",
-    },
-    {
-      id: 5,
-      name: "Umar Farouq",
-      matricNo: "24/110055",
-      department: "Physics",
-      faculty: "Physical Sciences",
-      level: "100L",
-      email: "umar.f@udus.edu.ng",
-      phone: "+234 816 789 0123",
-      role: "Member",
-      status: "Verified",
-      registeredDate: "2026-06-01",
-      wing: "General",
-    },
-  ];
+  const [members, setMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch Profiles from Supabase
+  const fetchProfiles = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setMembers(data || []);
+    } catch (err) {
+      console.error("Error fetching profiles:", err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfiles();
+  }, []);
 
   // Filtering Logic
   const filteredMembers = members.filter((member) => {
-    const matchesSearch =
-      member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.matricNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.department.toLowerCase().includes(searchQuery.toLowerCase());
+    const nameMatch = member.full_name
+      ?.toLowerCase()
+      .includes(searchQuery.toLowerCase());
+    const deptMatch = member.department
+      ?.toLowerCase()
+      .includes(searchQuery.toLowerCase());
+    const emailMatch = member.email
+      ?.toLowerCase()
+      .includes(searchQuery.toLowerCase());
 
+    const matchesSearch = nameMatch || deptMatch || emailMatch;
+
+    // Optional level filtering if level field exists, otherwise pass through
     const matchesLevel =
       selectedLevel === "All" || member.level === selectedLevel;
 
@@ -109,7 +68,7 @@ export default function ExcoDirectory() {
 
   return (
     <div className="min-h-screen bg-slate-100 flex text-slate-800 font-sans">
-      {/* Reusable Matching Sidebar */}
+      {/* Reusable Sidebar */}
       <ExcoSidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
       {/* Main Content */}
@@ -119,7 +78,7 @@ export default function ExcoDirectory() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg"
+              className="p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
             >
               <Menu size={20} />
             </button>
@@ -141,8 +100,8 @@ export default function ExcoDirectory() {
                 Student Member Directory
               </h2>
               <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                Lookup matriculation details, verify membership, and review
-                student wing affiliations.
+                Lookup registered profiles, verify membership, and review
+                executive roles.
               </p>
             </div>
             <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-slate-600 text-xs font-semibold shrink-0">
@@ -162,7 +121,7 @@ export default function ExcoDirectory() {
                 />
                 <input
                   type="text"
-                  placeholder="Search by student name, matric number, or department..."
+                  placeholder="Search by student name, department, or email..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-teal-500 text-slate-800 placeholder:text-slate-400"
@@ -175,7 +134,7 @@ export default function ExcoDirectory() {
                   <button
                     key={lvl}
                     onClick={() => setSelectedLevel(lvl)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
                       selectedLevel === lvl
                         ? "bg-teal-600 text-white"
                         : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -192,21 +151,28 @@ export default function ExcoDirectory() {
           <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
             <div className="p-4 border-b border-slate-100 flex items-center justify-between">
               <span className="font-bold text-slate-800 text-sm">
-                Registered Students ({filteredMembers.length})
+                Registered Profiles ({filteredMembers.length})
               </span>
               <span className="text-xs text-slate-400 font-medium">
-                Alphabetical Order
+                Real-time Database
               </span>
             </div>
 
-            {filteredMembers.length === 0 ? (
+            {loading ? (
+              <div className="p-12 text-center text-slate-400 flex flex-col items-center justify-center gap-2">
+                <Loader2 className="animate-spin text-teal-600" size={24} />
+                <span className="text-xs font-semibold">
+                  Loading student profiles...
+                </span>
+              </div>
+            ) : filteredMembers.length === 0 ? (
               <div className="p-12 text-center space-y-3">
                 <Users className="mx-auto text-slate-300" size={40} />
                 <p className="text-sm font-bold text-slate-600">
                   No student records match your query
                 </p>
                 <p className="text-xs text-slate-400">
-                  Double check the matric number or search name.
+                  Try adjusting search parameters or clearing filters.
                 </p>
               </div>
             ) : (
@@ -215,9 +181,9 @@ export default function ExcoDirectory() {
                   <thead>
                     <tr className="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                       <th className="py-3 px-4">Student</th>
-                      <th className="py-3 px-4">Matric No</th>
-                      <th className="py-3 px-4">Department & Level</th>
-                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4">Department</th>
+                      <th className="py-3 px-4">Role</th>
+                      <th className="py-3 px-4">Executive Status</th>
                       <th className="py-3 px-4 text-right">Details</th>
                     </tr>
                   </thead>
@@ -230,49 +196,52 @@ export default function ExcoDirectory() {
                         <td className="py-3.5 px-4 min-w-[200px]">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full bg-teal-100 text-teal-800 font-bold flex items-center justify-center shrink-0 text-xs">
-                              {member.name.charAt(0)}
+                              {(member.full_name || member.email || "U")
+                                .charAt(0)
+                                .toUpperCase()}
                             </div>
                             <div>
                               <p className="font-bold text-slate-900">
-                                {member.name}
+                                {member.full_name || "N/A"}
                               </p>
                               <p className="text-[10px] text-slate-400">
-                                {member.wing}
+                                {member.email}
                               </p>
                             </div>
                           </div>
                         </td>
-                        <td className="py-3.5 px-4 font-mono font-semibold text-slate-700 whitespace-nowrap">
-                          {member.matricNo}
-                        </td>
                         <td className="py-3.5 px-4 whitespace-nowrap">
                           <p className="font-semibold text-slate-800">
-                            {member.department}
+                            {member.department || "Not Specified"}
                           </p>
-                          <p className="text-[10px] text-slate-400">
-                            {member.level} • {member.faculty}
-                          </p>
+                        </td>
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <span className="font-medium text-slate-600">
+                            {member.exco_role ||
+                              (member.is_exco ? "Exco Officer" : "Member")}
+                          </span>
                         </td>
                         <td className="py-3.5 px-4 whitespace-nowrap">
                           <span
                             className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1 border ${
-                              member.status === "Verified"
+                              member.is_exco
                                 ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-                                : "bg-amber-50 text-amber-700 border-amber-100"
+                                : "bg-slate-50 text-slate-600 border-slate-200"
                             }`}
                           >
-                            {member.status === "Verified" ? (
-                              <CheckCircle size={10} />
+                            {member.is_exco ? (
+                              <>
+                                <ShieldCheck size={10} /> Exco
+                              </>
                             ) : (
-                              <XCircle size={10} />
+                              <>Member</>
                             )}
-                            {member.status}
                           </span>
                         </td>
                         <td className="py-3.5 px-4 text-right whitespace-nowrap">
                           <button
                             onClick={() => setSelectedStudent(member)}
-                            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg transition-colors text-xs"
+                            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg transition-colors text-xs cursor-pointer"
                           >
                             View Record
                           </button>
@@ -300,7 +269,7 @@ export default function ExcoDirectory() {
               </div>
               <button
                 onClick={() => setSelectedStudent(null)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -310,49 +279,53 @@ export default function ExcoDirectory() {
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2">
                 <div className="flex items-center justify-between">
                   <h4 className="font-extrabold text-sm text-slate-900">
-                    {selectedStudent.name}
+                    {selectedStudent.full_name || "N/A"}
                   </h4>
-                  <span className="font-mono text-teal-700 font-bold bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100">
-                    {selectedStudent.matricNo}
-                  </span>
+                  {selectedStudent.is_admin && (
+                    <span className="font-mono text-xs text-rose-700 font-bold bg-rose-50 px-2 py-0.5 rounded-md border border-rose-100">
+                      System Admin
+                    </span>
+                  )}
                 </div>
                 <p className="text-slate-500 font-medium">
-                  {selectedStudent.department} — {selectedStudent.level}
+                  {selectedStudent.department || "No Department Assigned"}
                 </p>
               </div>
 
               <div className="space-y-2.5">
                 <div className="flex items-center gap-3 text-slate-600">
+                  <Mail size={16} className="text-slate-400 shrink-0" />
+                  <span>{selectedStudent.email || "No email available"}</span>
+                </div>
+                <div className="flex items-center gap-3 text-slate-600">
                   <Building size={16} className="text-slate-400 shrink-0" />
                   <span>
-                    Faculty: <strong>{selectedStudent.faculty}</strong>
+                    Department:{" "}
+                    <strong>{selectedStudent.department || "N/A"}</strong>
                   </span>
-                </div>
-                <div className="flex items-center gap-3 text-slate-600">
-                  <Mail size={16} className="text-slate-400 shrink-0" />
-                  <span>{selectedStudent.email}</span>
-                </div>
-                <div className="flex items-center gap-3 text-slate-600">
-                  <Phone size={16} className="text-slate-400 shrink-0" />
-                  <span>{selectedStudent.phone}</span>
                 </div>
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
                 <div>
                   <span className="text-[10px] text-slate-400 block">
-                    Wing Assignment
+                    Exco Designation
                   </span>
                   <span className="font-bold text-slate-800">
-                    {selectedStudent.wing}
+                    {selectedStudent.exco_role ||
+                      (selectedStudent.is_exco ? "Executive" : "None")}
                   </span>
                 </div>
                 <div>
                   <span className="text-[10px] text-slate-400 block">
-                    System Role
+                    System Access
                   </span>
                   <span className="font-bold text-teal-700">
-                    {selectedStudent.role}
+                    {selectedStudent.is_admin
+                      ? "Admin"
+                      : selectedStudent.is_exco
+                        ? "Exco"
+                        : "General Member"}
                   </span>
                 </div>
               </div>
@@ -361,7 +334,7 @@ export default function ExcoDirectory() {
             <div className="pt-2">
               <button
                 onClick={() => setSelectedStudent(null)}
-                className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl transition-colors text-xs"
+                className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl transition-colors text-xs cursor-pointer"
               >
                 Close Record
               </button>

@@ -1,41 +1,216 @@
-import React, { useState } from "react";
+import { useEffect, useState } from "react";
 import mssnLogo from "../assets/MSSN_logo.jpg";
 import NavBar from "../components/NavBar";
+import { useAuth } from "../AuthContext"; // Adjust import path if needed
+import { supabase } from "../supabaseClient"; // Adjust import path to your Supabase client
 import {
-  Users,
   Megaphone,
-  Calendar,
-  FileText,
-  Video,
-  MessageSquare,
-  ChevronRight,
-  BookOpen,
-  Shield,
-  Menu,
-  X,
   ArrowRight,
-  Sparkles,
+  Clock,
+  X,
+  ChevronRight,
+  UserCheck,
+  LogOut,
+  Calendar,
+  MapPin,
+  Video,
+  FileText,
+  Image as ImageIcon,
+  ExternalLink,
+  Music,
+  Play,
 } from "lucide-react";
 
 export default function LandingPage() {
+  const [showAlertBanner, setShowAlertBanner] = useState(true);
+  const { user, profile, loading: authLoading, signOut } = useAuth();
+
+  // Dynamic Data States
+  const [events, setEvents] = useState([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
+
+  const [resources, setResources] = useState([]);
+  const [resourcesLoading, setResourcesLoading] = useState(true);
+
+  const [announcements, setAnnouncements] = useState([]);
+  const [announcementsLoading, setAnnouncementsLoading] = useState(true);
+
+  // Fetch Announcements from Supabase
+  useEffect(() => {
+    async function fetchAnnouncements() {
+      try {
+        const { data, error } = await supabase
+          .from("announcements")
+          .select("*")
+          .eq("is_published", true)
+          .order("created_at", { ascending: false })
+          .limit(3);
+
+        if (!error && data) {
+          setAnnouncements(data);
+        }
+      } catch (err) {
+        console.error("Error fetching announcements:", err);
+      } finally {
+        setAnnouncementsLoading(false);
+      }
+    }
+
+    fetchAnnouncements();
+  }, []);
+
+  // Fetch Events from Supabase
+  useEffect(() => {
+    async function fetchEvents() {
+      try {
+        const { data, error } = await supabase
+          .from("events")
+          .select("*")
+          .eq("is_published", true)
+          .order("event_date", { ascending: true })
+          .limit(3);
+
+        if (!error && data) {
+          setEvents(data);
+        }
+      } catch (err) {
+        console.error("Error fetching events:", err);
+      } finally {
+        setEventsLoading(false);
+      }
+    }
+
+    fetchEvents();
+  }, []);
+
+  // Fetch Resources (Media & PDFs) from Supabase
+  useEffect(() => {
+    async function fetchResources() {
+      try {
+        const { data, error } = await supabase
+          .from("resources")
+          .select("*")
+          .eq("is_published", true)
+          .order("created_at", { ascending: false })
+          .limit(3);
+
+        if (!error && data) {
+          setResources(data);
+        }
+      } catch (err) {
+        console.error("Error fetching resources:", err);
+      } finally {
+        setResourcesLoading(false);
+      }
+    }
+
+    fetchResources();
+  }, []);
+
+  // Helper: Format Date String
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "";
+    return new Date(dateStr).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  // Helper: Format 24h Time (HH:MM:SS) to 12h AM/PM
+  const formatTime = (timeStr) => {
+    if (!timeStr) return "";
+    const [hours, minutes] = timeStr.split(":");
+    const h = parseInt(hours, 10);
+    const ampm = h >= 12 ? "PM" : "AM";
+    const formattedHours = h % 12 || 12;
+    return `${formattedHours}:${minutes} ${ampm}`;
+  };
+
+  // Helper: Get Icon by Resource Type Enum
+  const getResourceIcon = (type) => {
+    switch (type?.toLowerCase()) {
+      case "video":
+        return <Video size={28} />;
+      case "image":
+        return <ImageIcon size={28} />;
+      case "audio":
+        return <Music size={28} />;
+      case "pdf":
+      case "doc":
+      default:
+        return <FileText size={28} />;
+    }
+  };
+
+  const getPriorityBadge = (priority) => {
+    switch (priority?.toLowerCase()) {
+      case "urgent":
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+            Urgent
+          </span>
+        );
+      case "normal":
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            Notice
+          </span>
+        );
+      default:
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+            Info
+          </span>
+        );
+    }
+  };
+
+  const urgentAnnouncement = announcements.find(
+    (a) => a.priority?.toLowerCase() === "urgent",
+  );
+
   return (
-    <div className="min-h-screen bg-white text-slate-800 font-sans selection:bg-emerald-200 selection:text-emerald-900">
-      {/* Soft Background Accent Glows */}
+    <div className="min-h-screen bg-white text-slate-800 font-sans selection:bg-emerald-200 selection:text-emerald-900 flex flex-col justify-between">
+      {/* Background Accent Glows */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
         <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-emerald-100/70 blur-3xl" />
-        <div className="absolute top-1/30987890 -left-40 w-96 h-96 rounded-full bg-lime-100/60 blur-3xl" />
-        <div className="absolute -bottom-40 right-1/3 w-96 h-96 rounded-full bg-green-100/50 blur-3xl" />
+        <div className="absolute bottom-10 -left-40 w-96 h-96 rounded-full bg-lime-100/60 blur-3xl" />
       </div>
 
-      {/* Navigation Header */}
-      <NavBar />
+      <div>
+        {/* Urgent Announcement Alert Banner */}
+        {showAlertBanner && urgentAnnouncement && (
+          <div className="bg-emerald-900 text-emerald-50 px-4 py-2.5 text-xs sm:text-sm relative z-50 flex items-center justify-between border-b border-emerald-800">
+            <div className="max-w-7xl mx-auto flex items-center gap-2.5 font-medium truncate pr-6">
+              <span className="bg-rose-500 text-white font-bold px-2 py-0.5 rounded text-[10px] uppercase tracking-wider shrink-0">
+                Urgent
+              </span>
+              <span className="truncate">{urgentAnnouncement.title} —</span>
+              <a
+                href="#announcements"
+                className="underline text-emerald-200 hover:text-white shrink-0 font-semibold"
+              >
+                Read Details
+              </a>
+            </div>
+            <button
+              onClick={() => setShowAlertBanner(false)}
+              className="text-emerald-300 hover:text-white p-1 rounded-md transition-colors cursor-pointer"
+              aria-label="Close alert"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        )}
 
-      {/* Hero Section */}
-      <section className="relative z-10 pt-16 pb-24 lg:pt-20 lg:pb-32 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        <div className="text-center max-w-3xl mx-auto space-y-6">
-          {/* Hero Emblem & Pill */}
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-20 h-20 rounded-2xl overflow-hidden border border-emerald-200 p-1 bg-white shadow-lg shadow-emerald-500/10">
+        <NavBar />
+
+        {/* Hero Section */}
+        <section className="relative z-10 pt-12 pb-16 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto text-center space-y-6">
+          <div className="flex justify-center">
+            <div className="w-20 h-20 rounded-2xl border border-emerald-200 p-1 bg-white shadow-md">
               <img
                 src={mssnLogo}
                 alt="MSSN UDUS Emblem"
@@ -44,241 +219,343 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 leading-tight">
-            Empowering the Ummah Through{" "}
-            <span className="bg-linear-to-r from-emerald-600 via-green-600 to-emerald-500 bg-clip-text text-transparent">
-              Digital Unity
-            </span>
+          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-slate-900">
+            MSSN UDUS Portal
           </h1>
 
-          <p className="text-base sm:text-lg text-slate-600 leading-relaxed max-w-2xl mx-auto">
-            A unified digital ecosystem connecting members, executives, and
-            administrators. Seamlessly manage operations, register for events,
-            and access Islamic learning resources.
+          <p className="text-sm sm:text-base text-slate-600 max-w-xl mx-auto leading-relaxed">
+            {user ? (
+              <>
+                Welcome back,{" "}
+                <span className="font-semibold text-emerald-700">
+                  {profile?.full_name || user.email}
+                </span>
+                ! Browse upcoming events, announcements, and resources below.
+              </>
+            ) : (
+              "Welcome to the official central platform. Sign in to access member services, academic resources, and event registrations."
+            )}
           </p>
 
-          <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <button className="w-full sm:w-auto px-8 py-4 text-slate-950 bg-linear-to-r from-emerald-400 via-emerald-400 to-lime-300 font-bold rounded-xl shadow-lg shadow-emerald-500/10 hover:shadow-xl hover:shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2">
-              Explore Portal <ArrowRight size={18} />
-            </button>
-            <button className="w-full sm:w-auto px-8 py-4 text-emerald-800 bg-emerald-50 border border-emerald-200 font-semibold rounded-xl hover:bg-emerald-100 transition-all duration-200">
-              View Announcements
-            </button>
-          </div>
-        </div>
-
-        {/* Floating Metric Stats Banner */}
-        <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto p-4 rounded-2xl bg-white/80 border border-emerald-100 shadow-xl shadow-emerald-950/5 backdrop-blur-sm">
-          {[
-            { label: "Active Members", value: "2,500+" },
-            { label: "Events Hosted", value: "150+" },
-            { label: "Learning Resources", value: "500+" },
-            { label: "Execs & Admins", value: "40+" },
-          ].map((stat, index) => (
-            <div key={index} className="text-center p-3">
-              <div className="text-2xl sm:text-3xl font-extrabold text-emerald-600">
-                {stat.value}
-              </div>
-              <div className="text-xs text-slate-500 mt-1 font-medium">
-                {stat.label}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Core Features Grid */}
-      <section
-        id="features"
-        className="relative z-10 py-20 bg-slate-50/80 border-y border-slate-100"
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-16">
-            <h2 className="text-3xl font-bold text-slate-900 sm:text-4xl">
-              Designed for <span className="text-emerald-600">Admins</span> &{" "}
-              <span className="text-emerald-800">Members</span>
-            </h2>
-            <p className="text-slate-600 mt-3">
-              Everything you need to streamline organizational management and
-              elevate member experience in one platform.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[
-              {
-                icon: <Users className="text-emerald-600" size={24} />,
-                title: "Member & Executive Management",
-                desc: "Efficient tracking of general membership, executive rolls, profiles, and administrative responsibilities.",
-              },
-              {
-                icon: <Megaphone className="text-emerald-600" size={24} />,
-                title: "Broadcast Announcements",
-                desc: "Stay updated with real-time official statements, notifications, and important updates straight from leadership.",
-              },
-              {
-                icon: <Calendar className="text-emerald-600" size={24} />,
-                title: "Event Registrations",
-                desc: "Browse upcoming Islamic lectures, programs, and workshops. Register effortlessly online.",
-              },
-              {
-                icon: <FileText className="text-emerald-600" size={24} />,
-                title: "Document Library",
-                desc: "Access official MSSN UDUS documents, constitutions, guides, and published literature seamlessly.",
-              },
-              {
-                icon: <Video className="text-emerald-600" size={24} />,
-                title: "Multimedia Hub",
-                desc: "Stream and download audio lectures, event photo galleries, and video recordings from past events.",
-              },
-              {
-                icon: <MessageSquare className="text-emerald-600" size={24} />,
-                title: "Feedback & Enquiries",
-                desc: "Direct communication channel for members to share feedback, ask questions, and suggest improvements.",
-              },
-            ].map((feature, idx) => (
-              <div
-                key={idx}
-                className="group p-8 rounded-2xl bg-white border border-slate-200 hover:border-emerald-300 hover:shadow-xl hover:shadow-emerald-950/5 transition-all duration-300"
+          {/* Conditional Action Buttons */}
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+            {authLoading ? (
+              <div className="h-12 w-48 bg-slate-100 animate-pulse rounded-xl" />
+            ) : user ? (
+              <button
+                onClick={signOut}
+                className="w-full sm:w-auto px-6 py-3.5 text-slate-700 bg-slate-100 border border-slate-200 font-semibold rounded-xl hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
-                <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-emerald-100 transition-all">
-                  {feature.icon}
-                </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-emerald-700 transition-colors">
-                  {feature.title}
-                </h3>
-                <p className="text-slate-600 text-sm leading-relaxed">
-                  {feature.desc}
-                </p>
-              </div>
-            ))}
+                <LogOut size={16} /> Sign Out
+              </button>
+            ) : (
+              <>
+                <a
+                  href="/login"
+                  className="w-full sm:w-auto px-8 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+                >
+                  Sign In <ArrowRight size={18} />
+                </a>
+                <a
+                  href="/register"
+                  className="w-full sm:w-auto px-8 py-3.5 text-slate-700 bg-slate-100 border border-slate-200 font-semibold rounded-xl hover:bg-slate-200 transition-all text-center"
+                >
+                  Create Account
+                </a>
+              </>
+            )}
           </div>
-        </div>
-      </section>
 
-      {/* Dual Perspective Highlight Section */}
-      <section className="relative z-10 py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
-          {/* Admin Control Preview */}
-          <div className="p-8 rounded-3xl bg-emerald-50/50 border border-emerald-100 space-y-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-emerald-100 text-emerald-800 text-xs font-semibold">
-              <Shield size={14} /> For Administrators & Executives
+          {/* Session Status Tag */}
+          {user && (
+            <div className="pt-1 flex items-center justify-center gap-1.5 text-xs text-slate-500">
+              <UserCheck size={14} className="text-emerald-600" />
+              <span>
+                Signed in as{" "}
+                <strong className="text-slate-700">{user.email}</strong>
+              </span>
             </div>
-            <h3 className="text-2xl font-bold text-slate-900">
-              Full Operational Control
-            </h3>
-            <ul className="space-y-4 text-slate-700 text-sm">
-              <li className="flex items-start gap-3">
-                <div className="w-5 h-5 rounded-full bg-emerald-200 text-emerald-800 flex items-center justify-center shrink-0 mt-0.5 font-bold text-xs">
-                  ✓
-                </div>
-                Manage executive profiles and assign administrative permissions.
-              </li>
-              <li className="flex items-start gap-3">
-                <div className="w-5 h-5 rounded-full bg-emerald-200 text-emerald-800 flex items-center justify-center shrink-0 mt-0.5 font-bold text-xs">
-                  ✓
-                </div>
-                Publish multimedia, documents, and news announcements instantly.
-              </li>
-              <li className="flex items-start gap-3">
-                <div className="w-5 h-5 rounded-full bg-emerald-200 text-emerald-800 flex items-center justify-center shrink-0 mt-0.5 font-bold text-xs">
-                  ✓
-                </div>
-                Monitor member event attendance and process user feedback
-                responses.
-              </li>
-            </ul>
+          )}
+        </section>
+
+        {/* Public Announcements Broadcast (Live Supabase Data) */}
+        <section
+          id="announcements"
+          className="relative z-10 py-12 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto border-t border-slate-100"
+        >
+          <div className="flex items-center gap-2 mb-6">
+            <Megaphone className="text-emerald-600" size={18} />
+            <h2 className="text-xl font-bold text-slate-900">
+              Official Broadcasts & Memos
+            </h2>
           </div>
 
-          {/* Member Experience Preview */}
-          <div className="p-8 rounded-3xl bg-lime-50/40 border border-lime-200/60 space-y-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-lime-100 text-lime-900 text-xs font-semibold">
-              <BookOpen size={14} /> For MSSN UDUS Members
+          {announcementsLoading ? (
+            <div className="grid md:grid-cols-3 gap-6">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="h-44 bg-slate-100 animate-pulse rounded-xl border border-slate-200"
+                />
+              ))}
             </div>
-            <h3 className="text-2xl font-bold text-slate-900">
-              Interactive Member Portal
-            </h3>
-            <ul className="space-y-4 text-slate-700 text-sm">
-              <li className="flex items-start gap-3">
-                <div className="w-5 h-5 rounded-full bg-lime-200 text-lime-900 flex items-center justify-center shrink-0 mt-0.5 font-bold text-xs">
-                  ✓
-                </div>
-                Register for upcoming seminars, Islamic week activities, and
-                programs.
-              </li>
-              <li className="flex items-start gap-3">
-                <div className="w-5 h-5 rounded-full bg-lime-200 text-lime-900 flex items-center justify-center shrink-0 mt-0.5 font-bold text-xs">
-                  ✓
-                </div>
-                Stream audio Halqahs, event videos, and download reading
-                materials.
-              </li>
-              <li className="flex items-start gap-3">
-                <div className="w-5 h-5 rounded-full bg-lime-200 text-lime-900 flex items-center justify-center shrink-0 mt-0.5 font-bold text-xs">
-                  ✓
-                </div>
-                Direct access to branch executive leadership through integrated
-                feedback.
-              </li>
-            </ul>
-          </div>
-        </div>
-      </section>
+          ) : announcements.length === 0 ? (
+            <div className="text-center py-8 text-slate-500 text-xs italic bg-slate-50 rounded-xl border border-dashed border-slate-200">
+              No published announcements found.
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-3 gap-6">
+              {announcements.map((item) => (
+                <div
+                  key={item.id}
+                  className={`p-5 rounded-xl bg-white border transition-all flex flex-col justify-between space-y-4 ${
+                    item.priority?.toLowerCase() === "urgent"
+                      ? "border-rose-200 ring-1 ring-rose-100"
+                      : "border-slate-200 hover:border-emerald-300"
+                  }`}
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      {getPriorityBadge(item.priority)}
+                      <div className="flex items-center gap-1 text-[11px] text-slate-400">
+                        <Clock size={12} />
+                        {formatDate(item.created_at)}
+                      </div>
+                    </div>
 
-      {/* CTA Callout */}
-      <section className="relative z-10 py-16 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto text-center">
-        <div className="p-10 rounded-3xl bg-linear-to-r from-emerald-900 via-emerald-800 to-green-900 text-white space-y-6 shadow-xl shadow-emerald-950/10">
-          <h2 className="text-3xl font-extrabold">
-            Ready to connect with MSSN UDUS?
-          </h2>
-          <p className="text-emerald-100 max-w-xl mx-auto text-sm sm:text-base">
-            Create an account today to stay updated on branch activities, manage
-            your event registrations, and access exclusive learning materials.
-          </p>
-          <button className="px-8 py-3.5 text-slate-950 bg-linear-to-r from-emerald-400 to-lime-300 font-bold rounded-xl shadow-lg hover:scale-105 transition-all">
-            Get Started Now
-          </button>
-        </div>
-      </section>
+                    <h3 className="font-bold text-slate-900 text-base leading-snug">
+                      {item.title}
+                    </h3>
+
+                    <p className="text-xs text-slate-600 leading-relaxed line-clamp-3">
+                      {item.content}
+                    </p>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                    <span className="text-[10px] font-semibold text-slate-500 bg-slate-50 px-2 py-0.5 rounded capitalize">
+                      {item.category || "General"}
+                    </span>
+                    <button className="text-xs font-bold text-emerald-700 hover:text-emerald-900 inline-flex items-center gap-0.5 cursor-pointer">
+                      Details <ChevronRight size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Upcoming Events Section (Live Data) */}
+        <section
+          id="events"
+          className="relative z-10 py-12 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto border-t border-slate-100"
+        >
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+              <Calendar className="text-emerald-600" size={18} />
+              <h2 className="text-xl font-bold text-slate-900">
+                Upcoming Events & Programs
+              </h2>
+            </div>
+          </div>
+
+          {eventsLoading ? (
+            <div className="grid md:grid-cols-3 gap-6">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="h-44 bg-slate-100 animate-pulse rounded-xl border border-slate-200"
+                />
+              ))}
+            </div>
+          ) : events.length === 0 ? (
+            <div className="text-center py-8 text-slate-500 text-xs italic bg-slate-50 rounded-xl border border-dashed border-slate-200">
+              No upcoming published events found.
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-3 gap-6">
+              {events.map((ev) => (
+                <div
+                  key={ev.id}
+                  className="p-5 rounded-xl bg-white border border-slate-200 hover:border-emerald-300 transition-all flex flex-col justify-between space-y-4 shadow-xs"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">
+                        {ev.category || "General"}
+                      </span>
+                      <span className="text-xs font-medium text-slate-500 flex items-center gap-1">
+                        <Clock size={12} /> {formatTime(ev.start_time)}
+                      </span>
+                    </div>
+
+                    <h3 className="font-bold text-slate-900 text-base leading-snug">
+                      {ev.title}
+                    </h3>
+
+                    <div className="space-y-1.5 text-xs text-slate-600 pt-1">
+                      <div className="flex items-center gap-1.5">
+                        <Calendar
+                          size={13}
+                          className="text-emerald-600 shrink-0"
+                        />
+                        <span>{formatDate(ev.event_date)}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <MapPin
+                          size={13}
+                          className="text-emerald-600 shrink-0"
+                        />
+                        <span className="truncate">{ev.venue}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-100 flex justify-end">
+                    <a
+                      href="/events"
+                      className="text-xs font-bold text-emerald-700 hover:text-emerald-900 inline-flex items-center gap-0.5"
+                    >
+                      Register / Info <ChevronRight size={14} />
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Media & Resources Highlights (Live Data including Image & Video Previews) */}
+        <section
+          id="media"
+          className="relative z-10 py-12 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto border-t border-slate-100"
+        >
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+              <Video className="text-emerald-600" size={18} />
+              <h2 className="text-xl font-bold text-slate-900">
+                Media & Library Highlights
+              </h2>
+            </div>
+          </div>
+
+          {resourcesLoading ? (
+            <div className="grid md:grid-cols-3 gap-6">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="h-48 bg-slate-100 animate-pulse rounded-xl border border-slate-200"
+                />
+              ))}
+            </div>
+          ) : resources.length === 0 ? (
+            <div className="text-center py-8 text-slate-500 text-xs italic bg-slate-50 rounded-xl border border-dashed border-slate-200">
+              No published resources uploaded yet.
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-3 gap-6">
+              {resources.map((item) => {
+                const type = item.type?.toLowerCase();
+
+                return (
+                  <div
+                    key={item.id}
+                    className="rounded-xl border border-slate-200 overflow-hidden bg-white hover:border-emerald-300 transition-all flex flex-col justify-between"
+                  >
+                    {/* Media Preview Stage */}
+                    <div className="h-40 bg-slate-900 flex items-center justify-center relative overflow-hidden group">
+                      {type === "image" ? (
+                        <img
+                          src={item.file_url}
+                          alt={item.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : type === "video" ? (
+                        <div className="w-full h-full relative flex items-center justify-center bg-black">
+                          <video
+                            src={item.file_url}
+                            preload="metadata"
+                            className="w-full h-full object-cover opacity-80"
+                          />
+                          <div className="absolute inset-0 bg-black/30 flex items-center justify-center group-hover:bg-black/10 transition-colors">
+                            <div className="w-10 h-10 rounded-full bg-emerald-600/90 text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                              <Play size={20} className="ml-0.5" />
+                            </div>
+                          </div>
+                        </div>
+                      ) : type === "audio" ? (
+                        <div className="w-full h-full bg-gradient-to-br from-slate-900 to-emerald-950 flex flex-col items-center justify-center text-emerald-400 p-4 text-center">
+                          <div className="w-12 h-12 rounded-full bg-emerald-900/60 border border-emerald-700/50 flex items-center justify-center mb-1">
+                            <Music size={24} />
+                          </div>
+                          <span className="text-[11px] text-emerald-300 font-medium">
+                            Audio Recording
+                          </span>
+                        </div>
+                      ) : (
+                        /* Default / PDF / Document fallback view */
+                        <div className="w-full h-full bg-gradient-to-br from-slate-800 to-slate-900 flex flex-col items-center justify-center text-slate-300 p-4 text-center">
+                          <div className="w-12 h-12 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center mb-1">
+                            <FileText size={24} className="text-emerald-400" />
+                          </div>
+                          <span className="text-[11px] text-slate-400 font-medium">
+                            Document / PDF
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Type Label Badge */}
+                      <span className="absolute bottom-2 right-2 text-[10px] bg-black/70 backdrop-blur-xs text-white px-2 py-0.5 rounded font-mono uppercase tracking-wider flex items-center gap-1 border border-white/10 z-10">
+                        {getResourceIcon(type)}
+                        {item.type}
+                      </span>
+                    </div>
+
+                    {/* Card Details */}
+                    <div className="p-4 space-y-2 flex-1 flex flex-col justify-between">
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-medium">
+                          {formatDate(item.created_at)}
+                        </span>
+                        <h3 className="font-bold text-slate-900 text-sm leading-snug mt-0.5 line-clamp-2">
+                          {item.title}
+                        </h3>
+                      </div>
+
+                      <div className="pt-3 flex items-center justify-between border-t border-slate-100">
+                        <span className="text-[11px] text-emerald-700 font-semibold capitalize">
+                          {item.category || "General"}
+                        </span>
+                        <a
+                          href={item.file_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs font-bold text-emerald-700 hover:text-emerald-900 inline-flex items-center gap-1"
+                        >
+                          View <ExternalLink size={12} />
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      </div>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-slate-200 bg-slate-50 text-slate-600 text-xs py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
+      <footer className="relative z-10 border-t border-slate-200 bg-slate-50 text-slate-500 text-xs py-8 mt-12">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4 text-center md:text-left">
+          <div className="flex items-center gap-2">
+            <img src={mssnLogo} alt="MSSN Logo" className="w-5 h-5 rounded" />
+            <span className="font-bold text-slate-700">MSSN UDUS Portal</span>
+          </div>
+
           <div>
-            <div className="flex items-center gap-3 mb-2">
-              <img
-                src={mssnLogo}
-                alt="MSSN Logo"
-                className="w-7 h-7 object-contain rounded-md"
-              />
-              <span className="font-bold text-emerald-800 text-base">
-                MSSN UDUS
-              </span>
-              <span className="text-slate-300">|</span>
-              <span className="text-emerald-600 font-mono font-medium">
-                Central Management System
-              </span>
-            </div>
-            <p className="text-slate-500">
-              Muslim Students' Society of Nigeria, Usmanu Danfodiyo University
-              Sokoto Branch.
-            </p>
-          </div>
-
-          <div className="flex gap-6 text-slate-600">
-            <a href="#" className="hover:text-emerald-700 transition-colors">
-              Privacy Policy
-            </a>
-            <a href="#" className="hover:text-emerald-700 transition-colors">
-              Terms of Service
-            </a>
-            <a href="#" className="hover:text-emerald-700 transition-colors">
-              Support
-            </a>
-          </div>
-
-          <div className="text-slate-400">
-            &copy; {new Date().getFullYear()} MSSN UDUS. All rights reserved.
+            &copy; {new Date().getFullYear()} Muslim Students' Society of
+            Nigeria, UDUS Branch.
           </div>
         </div>
       </footer>

@@ -18,6 +18,7 @@ import AdminContentPage from "./pages/admin/AdminContentPage";
 import AdminFeedbackPage from "./pages/admin/AdminFeedbackPage";
 import AdminMembersPage from "./pages/admin/AdminMembersPage";
 import AdminEventsPage from "./pages/admin/AdminEventsPage";
+import AdminAnnouncements from "./pages/admin/AdminAnnouncements";
 
 // Executive (Exco) Imports
 import ExcoDashboard from "./pages/executives/ExcoDashboard";
@@ -25,6 +26,7 @@ import ExcoDirectory from "./pages/executives/ExcoDirectory";
 import ExcoPrograms from "./pages/executives/ExcoPrograms";
 // import ExcoAttendance from "./pages/executives/ExcoAttendance";
 import ExcoAnnouncements from "./pages/executives/ExcoAnnouncements";
+import ExcoResources from "./pages/executives/ExcoResources";
 
 const App = () => {
   return (
@@ -48,6 +50,10 @@ const App = () => {
             <Route path="/admin/feedback" element={<AdminFeedbackPage />} />
             <Route path="/admin/members" element={<AdminMembersPage />} />
             <Route path="/admin/events" element={<AdminEventsPage />} />
+            <Route
+              path="/admin/announcements"
+              element={<AdminAnnouncements />}
+            />
           </Route>
 
           {/* Executive (Exco) Protected Routes */}
@@ -57,6 +63,7 @@ const App = () => {
             <Route path="/exco/programs" element={<ExcoPrograms />} />
             {/* <Route path="/exco/attendance" element={<ExcoAttendance />} /> */}
             <Route path="/exco/announcements" element={<ExcoAnnouncements />} />
+            <Route path="/exco/resources" element={<ExcoResources />} />
           </Route>
         </Routes>
       </Router>
