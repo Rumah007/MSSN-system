@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import NavBar from "../components/NavBar";
+import { supabase } from "../supabaseClient";
 import {
   Send,
   Mail,
@@ -7,52 +8,109 @@ import {
   Phone,
   CheckCircle2,
   MessageSquare,
+  Sparkles,
+  AlertTriangle,
+  Lightbulb,
+  HelpCircle,
+  Loader2,
+  ShieldCheck,
 } from "lucide-react";
 
 export default function FeedbackPage() {
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    category: "General Enquiry",
+    title: "",
+    type: "suggestion",
     message: "",
   });
 
+  const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    // Front-end placeholder logic
-    setSubmitted(true);
-  };
+  const [errorMsg, setErrorMsg] = useState("");
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setErrorMsg("");
+
+    try {
+      const { error } = await supabase.from("feedback").insert([
+        {
+          title: formData.title,
+          type: formData.type,
+          message: formData.message,
+          status: "new",
+        },
+      ]);
+
+      if (error) throw error;
+
+      setSubmitted(true);
+    } catch (err) {
+      console.error("Error submitting feedback:", err.message);
+      setErrorMsg("Failed to send submission. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const typeOptions = [
+    {
+      id: "suggestion",
+      label: "Suggestion",
+      icon: Lightbulb,
+      activeColor:
+        "bg-amber-50 text-amber-800 border-amber-300 ring-2 ring-amber-500/10",
+    },
+    {
+      id: "idea",
+      label: "Idea",
+      icon: Sparkles,
+      activeColor:
+        "bg-emerald-50 text-emerald-800 border-emerald-300 ring-2 ring-emerald-500/10",
+    },
+    {
+      id: "complaint",
+      label: "Complaint",
+      icon: AlertTriangle,
+      activeColor:
+        "bg-rose-50 text-rose-800 border-rose-300 ring-2 ring-rose-500/10",
+    },
+    {
+      id: "inquiry",
+      label: "Inquiry",
+      icon: HelpCircle,
+      activeColor:
+        "bg-sky-50 text-sky-800 border-sky-300 ring-2 ring-sky-500/10",
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
-      {/* Navigation */}
+    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans selection:bg-emerald-100 selection:text-emerald-900">
       <NavBar />
 
       <main className="max-w-5xl mx-auto px-4 py-10 space-y-10">
         {/* Header */}
         <div className="text-center space-y-3 max-w-xl mx-auto">
-          <div className="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-2xl flex items-center justify-center mx-auto">
+          <div className="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-2xl flex items-center justify-center mx-auto shadow-2xs">
             <MessageSquare size={24} />
           </div>
-          <h1 className="text-3xl font-extrabold text-slate-900">
-            Contact & <span className="text-emerald-700">Feedback</span>
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+            Virtual <span className="text-emerald-700">Suggestion Box</span>
           </h1>
           <p className="text-slate-600 text-sm leading-relaxed">
-            Have a question, suggestion, or issue? Reach out directly to the
-            MSSN UDUS executive committee.
+            Have an idea, general enquiry, or complaint? Share your thoughts
+            directly with the MSSN UDUS Executive Committee.
           </p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-8 items-start">
-          {/* Contact Details Side Box */}
-          <div className="md:col-span-1 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-6">
-            <h2 className="text-lg font-bold text-slate-900 border-b border-slate-100 pb-3">
+          {/* Secretariat Contact Card */}
+          <div className="md:col-span-1 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-6">
+            <h2 className="text-base font-bold text-slate-900 border-b border-slate-100 pb-3">
               Reach Us Directly
             </h2>
 
@@ -63,8 +121,10 @@ export default function FeedbackPage() {
                   className="text-emerald-600 shrink-0 mt-0.5"
                 />
                 <div>
-                  <p className="font-semibold text-slate-800">Secretariat</p>
-                  <p className="text-xs">
+                  <p className="font-semibold text-slate-800 text-xs">
+                    Secretariat
+                  </p>
+                  <p className="text-xs text-slate-500 mt-0.5">
                     MSSN Secretariat, UDUS Main Campus, Sokoto, Nigeria.
                   </p>
                 </div>
@@ -73,138 +133,158 @@ export default function FeedbackPage() {
               <div className="flex items-start gap-3 text-slate-600">
                 <Mail size={18} className="text-emerald-600 shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-semibold text-slate-800">Email</p>
-                  <p className="text-xs">info@mssnudus.org</p>
+                  <p className="font-semibold text-slate-800 text-xs">Email</p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    info@mssnudus.org
+                  </p>
                 </div>
               </div>
 
               <div className="flex items-start gap-3 text-slate-600">
                 <Phone size={18} className="text-emerald-600 shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-semibold text-slate-800">
+                  <p className="font-semibold text-slate-800 text-xs">
                     Phone & WhatsApp
                   </p>
-                  <p className="text-xs">+234 (0) 800 000 0000</p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    +234 (0) 800 000 0000
+                  </p>
                 </div>
               </div>
             </div>
 
-            <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100 text-xs text-emerald-800 leading-relaxed">
-              <strong>Notice:</strong> For urgent academic or welfare concerns,
-              visit the Secretariat during official hours (4:00 PM – 6:00 PM
-              daily).
+            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/60 text-xs text-slate-600 leading-relaxed flex items-start gap-2.5">
+              <ShieldCheck
+                size={18}
+                className="text-emerald-600 shrink-0 mt-0.5"
+              />
+              <span>
+                <strong>100% Anonymous:</strong> Submissions are private and
+                reviewed solely by Executive Officers.
+              </span>
             </div>
           </div>
 
           {/* Form Area */}
-          <div className="md:col-span-2 bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-xs">
+          <div className="md:col-span-2 bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/80 shadow-xs">
             {submitted ? (
               <div className="text-center py-12 space-y-4">
-                <CheckCircle2 size={48} className="text-emerald-600 mx-auto" />
+                <CheckCircle2
+                  size={48}
+                  className="text-emerald-600 mx-auto animate-bounce"
+                />
                 <h2 className="text-2xl font-bold text-slate-900">
                   Jazakallah Khair!
                 </h2>
-                <p className="text-sm text-slate-600 max-w-sm mx-auto">
-                  Your feedback has been received. An executive officer will
-                  review it shortly.
+                <p className="text-sm text-slate-600 max-w-sm mx-auto leading-relaxed">
+                  Your entry has been dropped into the suggestion box. The
+                  Executive Committee will review it shortly.
                 </p>
                 <button
                   onClick={() => {
                     setSubmitted(false);
                     setFormData({
-                      name: "",
-                      email: "",
-                      category: "General Enquiry",
+                      title: "",
+                      type: "suggestion",
                       message: "",
                     });
                   }}
-                  className="px-5 py-2.5 bg-emerald-700 text-white rounded-xl text-xs font-semibold hover:bg-emerald-800 transition-colors"
+                  className="px-5 py-2.5 bg-emerald-700 text-white rounded-xl text-xs font-semibold hover:bg-emerald-800 transition-colors shadow-2xs"
                 >
-                  Send Another Message
+                  Submit Another Feedback
                 </button>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-5">
-                <h2 className="text-lg font-bold text-slate-900 border-b border-slate-100 pb-3">
-                  Send a Message
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <h2 className="text-base font-bold text-slate-900 border-b border-slate-100 pb-3">
+                  Submit Feedback
                 </h2>
 
-                <div className="grid sm:grid-cols-2 gap-4">
-                  {/* Name Input */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">
-                      Full Name
-                    </label>
-                    <input
-                      type="text"
-                      name="name"
-                      required
-                      placeholder="e.g. Ahmad Usman"
-                      value={formData.name}
-                      onChange={handleChange}
-                      className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-all"
-                    />
+                {errorMsg && (
+                  <div className="p-3 bg-red-50 border border-red-200 text-red-600 text-xs rounded-xl">
+                    {errorMsg}
                   </div>
+                )}
 
-                  {/* Email Input */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">
-                      Email Address
-                    </label>
-                    <input
-                      type="email"
-                      name="email"
-                      required
-                      placeholder="student@udus.edu.ng"
-                      value={formData.email}
-                      onChange={handleChange}
-                      className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-all"
-                    />
+                {/* Feedback Type Selection */}
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-slate-700">
+                    Submission Type
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {typeOptions.map((opt) => {
+                      const IconComponent = opt.icon;
+                      const isSelected = formData.type === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() =>
+                            setFormData({ ...formData, type: opt.id })
+                          }
+                          className={`flex items-center justify-center gap-1.5 p-2.5 rounded-xl border text-xs font-semibold transition-all ${
+                            isSelected
+                              ? opt.activeColor
+                              : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                          }`}
+                        >
+                          <IconComponent size={14} />
+                          <span>{opt.label}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
-                {/* Category Selection */}
+                {/* Title Input */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-slate-700">
-                    Category
+                    Subject / Title
                   </label>
-                  <select
-                    name="category"
-                    value={formData.category}
+                  <input
+                    type="text"
+                    name="title"
+                    required
+                    placeholder="e.g. Suggestion for Friday Halqah timing"
+                    value={formData.title}
                     onChange={handleChange}
-                    className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-all"
-                  >
-                    <option value="General Enquiry">General Enquiry</option>
-                    <option value="Welfare Request">Welfare Request</option>
-                    <option value="Event Feedback">Event Feedback</option>
-                    <option value="Portal Support">Portal / Tech Issue</option>
-                    <option value="Suggestion">Suggestion / Advice</option>
-                  </select>
+                    className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/10 transition-all placeholder:text-slate-400"
+                  />
                 </div>
 
                 {/* Message Body */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-slate-700">
-                    Message
+                    Details / Message
                   </label>
                   <textarea
                     name="message"
                     rows={5}
                     required
-                    placeholder="Type your message or enquiry here..."
+                    placeholder="Explain your suggestion, idea, or issue in detail..."
                     value={formData.message}
                     onChange={handleChange}
-                    className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-all resize-none"
+                    className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/10 transition-all resize-none placeholder:text-slate-400"
                   ></textarea>
                 </div>
 
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  className="w-full py-3 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-sm rounded-xl shadow-xs transition-all flex items-center justify-center gap-2"
+                  disabled={loading}
+                  className="w-full py-3 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-sm rounded-xl shadow-2xs transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  <Send size={16} />
-                  <span>Submit Feedback</span>
+                  {loading ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>Submitting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send size={16} />
+                      <span>Send Submission</span>
+                    </>
+                  )}
                 </button>
               </form>
             )}

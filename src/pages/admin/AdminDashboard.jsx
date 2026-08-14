@@ -13,6 +13,7 @@ import {
   Menu,
   ChevronRight,
   Loader2,
+  Inbox,
 } from "lucide-react";
 
 export default function AdminDashboard() {
@@ -26,7 +27,7 @@ export default function AdminDashboard() {
     totalRsvps: 0,
     nextEventDate: "None scheduled",
     totalResources: 0,
-    pendingInquiries: 0,
+    pendingFeedback: 0,
   });
 
   const [recentMembers, setRecentMembers] = useState([]);
@@ -36,19 +37,19 @@ export default function AdminDashboard() {
     setLoading(true);
     try {
       // 1. Fetch Total Members Count
-      const { count: memberCount, error: memberErr } = await supabase
+      const { count: memberCount } = await supabase
         .from("profiles")
         .select("*", { count: "exact", head: true });
 
       // 2. Fetch Recent Registered Members (limit 5)
-      const { data: recentData, error: recentErr } = await supabase
+      const { data: recentData } = await supabase
         .from("profiles")
-        .select("id, full_name, matric_number, department, level, created_at")
+        .select("id, full_name, department, level, created_at")
         .order("created_at", { ascending: false })
         .limit(5);
 
       // 3. Fetch Events Data
-      const { data: eventsData, error: eventsErr } = await supabase
+      const { data: eventsData } = await supabase
         .from("events")
         .select("id, event_date")
         .gte("event_date", new Date().toISOString())
@@ -60,16 +61,15 @@ export default function AdminDashboard() {
         .select("*", { count: "exact", head: true });
 
       // 4. Fetch Resources Count
-      const { count: resourceCount, error: resourceErr } = await supabase
+      const { count: resourceCount } = await supabase
         .from("resources")
         .select("*", { count: "exact", head: true });
 
-      // 5. Fetch Pending Inquiries Count
-      // (Adjust table name 'inquiries' or 'contact_messages' if different in your schema)
-      const { count: inquiryCount, error: inquiryErr } = await supabase
-        .from("inquiries")
+      // 5. Fetch Pending/New Feedback Count
+      const { count: feedbackCount } = await supabase
+        .from("feedback")
         .select("*", { count: "exact", head: true })
-        .eq("status", "pending");
+        .neq("status", "resolved");
 
       // Calculate Next Event Display Date
       let nextEventStr = "No upcoming events";
@@ -87,7 +87,7 @@ export default function AdminDashboard() {
         totalRsvps: rsvpCount || 0,
         nextEventDate: nextEventStr,
         totalResources: resourceCount || 0,
-        pendingInquiries: inquiryCount || 0,
+        pendingFeedback: feedbackCount || 0,
       });
 
       if (recentData) {
@@ -130,12 +130,12 @@ export default function AdminDashboard() {
       color: "bg-purple-50 text-purple-700 border-purple-100",
     },
     {
-      title: "Pending Inquiries",
-      value: loading ? "..." : `${metrics.pendingInquiries} Unread`,
+      title: "Unresolved Feedback",
+      value: loading ? "..." : `${metrics.pendingFeedback} Pending`,
       change:
-        metrics.pendingInquiries > 0
-          ? "Requires executive action"
-          : "All caught up",
+        metrics.pendingFeedback > 0
+          ? "Requires review"
+          : "All feedback handled",
       icon: MessageSquare,
       color: "bg-amber-50 text-amber-700 border-amber-100",
     },
@@ -179,8 +179,8 @@ export default function AdminDashboard() {
               </h2>
               <p className="text-xs sm:text-sm text-emerald-200 max-w-xl leading-relaxed">
                 Welcome to your management workspace. Track real-time student
-                registrations, handle active events, and upload executive
-                content.
+                registrations, handle active events, evaluate suggestions, and
+                upload executive content.
               </p>
             </div>
           </div>
@@ -225,7 +225,7 @@ export default function AdminDashboard() {
           {/* Quick Actions */}
           <div className="space-y-4">
             <h3 className="text-lg font-bold text-slate-900">Quick Actions</h3>
-            <div className="grid sm:grid-cols-3 gap-4">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <Link
                 to="/admin/members"
                 className="bg-white p-5 rounded-2xl border border-slate-200 hover:border-emerald-300 hover:shadow-md transition-all group space-y-3"
@@ -288,6 +288,27 @@ export default function AdminDashboard() {
                   <p className="text-xs text-slate-500 mt-1">
                     Upload constitutional PDFs, academic guides, and media
                     files.
+                  </p>
+                </div>
+              </Link>
+
+              <Link
+                to="/admin/feedback"
+                className="bg-white p-5 rounded-2xl border border-slate-200 hover:border-emerald-300 hover:shadow-md transition-all group space-y-3"
+              >
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                  <Inbox size={20} />
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-900 text-sm flex items-center justify-between">
+                    <span>Manage Feedback</span>
+                    <ChevronRight
+                      size={14}
+                      className="text-slate-400 group-hover:text-emerald-600 transition-colors"
+                    />
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Review anonymous student suggestions, ideas, and complaints.
                   </p>
                 </div>
               </Link>

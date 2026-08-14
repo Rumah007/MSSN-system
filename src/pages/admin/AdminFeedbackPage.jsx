@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AdminSidebar from "../admin/components/AdminSidebar";
+import { supabase } from "../../supabaseClient";
 import {
   MessageSquare,
   Search,
@@ -8,12 +9,15 @@ import {
   Clock,
   Trash2,
   Menu,
-  Mail,
-  User,
   AlertCircle,
-  CornerUpLeft,
   X,
-  Send,
+  Loader2,
+  Eye,
+  ShieldCheck,
+  Lightbulb,
+  Sparkles,
+  AlertTriangle,
+  HelpCircle,
 } from "lucide-react";
 
 export default function AdminFeedbackPage() {
@@ -22,103 +26,131 @@ export default function AdminFeedbackPage() {
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
   const [selectedFeedback, setSelectedFeedback] = useState(null);
-  const [replyMessage, setReplyMessage] = useState("");
 
-  // Sample Feedback & Contact Messages Data
-  const [feedbackList, setFeedbackList] = useState([
-    {
-      id: "FB-101",
-      senderName: "Kabir Abubakar",
-      senderEmail: "kabir.a@student.udus.edu.ng",
-      matricNo: "UDUS/CS/2022/0045",
-      category: "Academic Query",
-      subject: "Issue accessing 200L CS lecture PDFs",
-      message:
-        "Assalamu Alaikum, I tried downloading the 200L Computer Science Past Questions PDF from the resources tab, but the drive link gives a 404 error. Could you please update the link?",
-      status: "Pending",
-      dateSent: "2026-07-28 14:30",
-    },
-    {
-      id: "FB-102",
-      senderName: "Zainab Usman",
-      senderEmail: "zainab.u@student.udus.edu.ng",
-      matricNo: "UDUS/BCH/2021/0112",
-      category: "Event Inquiry",
-      subject: "Registration confirmation for Islamic Leadership Seminar",
-      message:
-        "Ma'asalam. I filled out the registration form for the upcoming leadership seminar but haven't received an email confirmation yet. Please verify if my spot is reserved.",
-      status: "Resolved",
-      dateSent: "2026-07-26 09:15",
-    },
-    {
-      id: "FB-103",
-      senderName: "Anonymous Student",
-      senderEmail: "anon@student.udus.edu.ng",
-      matricNo: "N/A",
-      category: "Portal Suggestion",
-      subject: "Dark Mode toggle for night reading",
-      message:
-        "It would be really helpful if the student dashboard had a Dark Mode toggle! Reading course guides late at night gets bright on the eyes.",
-      status: "Pending",
-      dateSent: "2026-07-24 22:00",
-    },
-    {
-      id: "FB-104",
-      senderName: "Ibrahim Sani",
-      senderEmail: "ibrahim.s@student.udus.edu.ng",
-      matricNo: "UDUS/PHY/2023/0089",
-      category: "General Inquiry",
-      subject: "Halqah schedule clarification",
-      message:
-        "Are the weekly Halqah sessions held at the Central Mosque or the Faculty Mosque during exam week? Thanks!",
-      status: "Resolved",
-      dateSent: "2026-07-20 16:45",
-    },
-  ]);
+  const [feedbackList, setFeedbackList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  // Fetch Feedback from Supabase
+  const fetchFeedback = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("feedback")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setFeedbackList(data || []);
+    } catch (err) {
+      console.error("Error fetching feedback:", err.message);
+      setErrorMsg("Failed to load feedback entries.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchFeedback();
+  }, []);
 
   // Filter Logic
   const filteredFeedback = feedbackList.filter((item) => {
     const matchesSearch =
-      item.senderName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.senderEmail.toLowerCase().includes(searchQuery.toLowerCase());
+      (item.title &&
+        item.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (item.message &&
+        item.message.toLowerCase().includes(searchQuery.toLowerCase()));
 
     const matchesCategory =
-      categoryFilter === "All" || item.category === categoryFilter;
+      categoryFilter === "All" ||
+      item.type?.toLowerCase() === categoryFilter.toLowerCase();
+
     const matchesStatus =
-      statusFilter === "All" || item.status === statusFilter;
+      statusFilter === "All" ||
+      item.status?.toLowerCase() === statusFilter.toLowerCase();
 
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
-  const toggleStatus = (id) => {
-    setFeedbackList((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              status: item.status === "Pending" ? "Resolved" : "Pending",
-            }
-          : item,
-      ),
-    );
-  };
+  // Toggle Status directly in Supabase
+  const toggleStatus = async (id, currentStatus) => {
+    const newStatus = currentStatus === "resolved" ? "new" : "resolved";
 
-  const handleDelete = (id) => {
-    if (confirm("Are you sure you want to delete this message?")) {
-      setFeedbackList((prev) => prev.filter((item) => item.id !== id));
-      if (selectedFeedback?.id === id) setSelectedFeedback(null);
+    try {
+      const { error } = await supabase
+        .from("feedback")
+        .update({ status: newStatus })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      setFeedbackList((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, status: newStatus } : item,
+        ),
+      );
+
+      if (selectedFeedback?.id === id) {
+        setSelectedFeedback((prev) => ({ ...prev, status: newStatus }));
+      }
+    } catch (err) {
+      console.error("Error updating status:", err.message);
+      alert("Failed to update status. Please try again.");
     }
   };
 
-  const handleSendReply = (e) => {
-    e.preventDefault();
-    if (!replyMessage) return;
-    alert(`Reply sent to ${selectedFeedback.senderEmail}!`);
-    toggleStatus(selectedFeedback.id);
-    setReplyMessage("");
-    setSelectedFeedback(null);
+  // Delete Feedback Row
+  const handleDelete = async (id) => {
+    if (confirm("Are you sure you want to delete this feedback entry?")) {
+      try {
+        const { error } = await supabase.from("feedback").delete().eq("id", id);
+
+        if (error) throw error;
+
+        setFeedbackList((prev) => prev.filter((item) => item.id !== id));
+        if (selectedFeedback?.id === id) setSelectedFeedback(null);
+      } catch (err) {
+        console.error("Error deleting item:", err.message);
+        alert("Failed to delete entry.");
+      }
+    }
+  };
+
+  // Helper function for rendering category badges
+  const renderCategoryBadge = (type) => {
+    switch (type?.toLowerCase()) {
+      case "suggestion":
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 font-bold text-[10px] rounded-md">
+            <Lightbulb size={10} /> Suggestion
+          </span>
+        );
+      case "idea":
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[10px] rounded-md">
+            <Sparkles size={10} /> Idea
+          </span>
+        );
+      case "complaint":
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 font-bold text-[10px] rounded-md">
+            <AlertTriangle size={10} /> Complaint
+          </span>
+        );
+      case "inquiry":
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-sky-50 text-sky-700 border border-sky-200 font-bold text-[10px] rounded-md">
+            <HelpCircle size={10} /> Inquiry
+          </span>
+        );
+      default:
+        return (
+          <span className="px-2 py-0.5 bg-slate-100 text-slate-600 font-bold text-[10px] rounded-md capitalize">
+            {type || "General"}
+          </span>
+        );
+    }
   };
 
   return (
@@ -138,7 +170,7 @@ export default function AdminFeedbackPage() {
               <Menu size={20} />
             </button>
             <span className="font-bold text-slate-900 text-sm">
-              Student Inquiries
+              Suggestion Box Admin
             </span>
           </div>
           <span className="text-xs px-2.5 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-full border border-emerald-100">
@@ -153,11 +185,11 @@ export default function AdminFeedbackPage() {
             <div>
               <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 flex items-center gap-2">
                 <MessageSquare className="text-emerald-600" size={24} />
-                <span>Student Feedback & Inquiries</span>
+                <span>Virtual Suggestion Box & Feedback</span>
               </h1>
               <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                Review messages, resolve student complaints, and manage portal
-                suggestions.
+                Review anonymous submissions, handle complaints, and evaluate
+                ideas submitted by students.
               </p>
             </div>
           </div>
@@ -166,7 +198,7 @@ export default function AdminFeedbackPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
               <p className="text-xs text-slate-500 font-medium">
-                Total Messages
+                Total Feedback
               </p>
               <h3 className="text-xl font-extrabold text-slate-900 mt-1">
                 {feedbackList.length}
@@ -174,22 +206,20 @@ export default function AdminFeedbackPage() {
             </div>
             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
               <p className="text-xs text-slate-500 font-medium">
-                Pending Action
+                New / Unresolved
               </p>
               <h3 className="text-xl font-extrabold text-amber-600 mt-1">
-                {feedbackList.filter((f) => f.status === "Pending").length}
+                {feedbackList.filter((f) => f.status !== "resolved").length}
               </h3>
             </div>
             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
               <p className="text-xs text-slate-500 font-medium">Resolved</p>
               <h3 className="text-xl font-extrabold text-emerald-600 mt-1">
-                {feedbackList.filter((f) => f.status === "Resolved").length}
+                {feedbackList.filter((f) => f.status === "resolved").length}
               </h3>
             </div>
             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-              <p className="text-xs text-slate-500 font-medium">
-                Filtered Results
-              </p>
+              <p className="text-xs text-slate-500 font-medium">Filtered</p>
               <h3 className="text-xl font-extrabold text-slate-700 mt-1">
                 {filteredFeedback.length}
               </h3>
@@ -205,7 +235,7 @@ export default function AdminFeedbackPage() {
               />
               <input
                 type="text"
-                placeholder="Search by sender, subject, or contents..."
+                placeholder="Search by title or message contents..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
@@ -220,32 +250,41 @@ export default function AdminFeedbackPage() {
               <select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
-                className="w-full md:w-44 px-3 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
+                className="w-full md:w-40 px-3 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium capitalize"
               >
-                <option value="All">All Categories</option>
-                <option value="Academic Query">Academic Query</option>
-                <option value="Event Inquiry">Event Inquiry</option>
-                <option value="Portal Suggestion">Portal Suggestion</option>
-                <option value="General Inquiry">General Inquiry</option>
+                <option value="All">All Types</option>
+                <option value="suggestion">Suggestions</option>
+                <option value="idea">Ideas</option>
+                <option value="complaint">Complaints</option>
+                <option value="inquiry">Inquiries</option>
               </select>
 
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full md:w-32 px-3 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
+                className="w-full md:w-32 px-3 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium capitalize"
               >
                 <option value="All">All Statuses</option>
-                <option value="Pending">Pending</option>
-                <option value="Resolved">Resolved</option>
+                <option value="new">New</option>
+                <option value="resolved">Resolved</option>
               </select>
             </div>
           </div>
 
           {/* Feedback Items List */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden divide-y divide-slate-100">
-            {filteredFeedback.length === 0 ? (
+            {loading ? (
+              <div className="p-12 text-center text-slate-400 text-xs flex items-center justify-center gap-2">
+                <Loader2 size={18} className="animate-spin text-emerald-600" />
+                <span>Loading submissions...</span>
+              </div>
+            ) : errorMsg ? (
+              <div className="p-10 text-center text-red-500 text-xs">
+                {errorMsg}
+              </div>
+            ) : filteredFeedback.length === 0 ? (
               <div className="p-10 text-center text-slate-400 text-xs">
-                No inquiries or messages match your criteria.
+                No feedback submissions match your criteria.
               </div>
             ) : (
               filteredFeedback.map((item) => (
@@ -255,20 +294,16 @@ export default function AdminFeedbackPage() {
                 >
                   <div className="space-y-2 flex-1">
                     <div className="flex flex-wrap items-center gap-2 text-xs">
-                      <span className="font-bold text-slate-900">
-                        {item.senderName}
-                      </span>
+                      {renderCategoryBadge(item.type)}
                       <span className="text-slate-400">•</span>
-                      <span className="text-slate-500 text-[11px] font-mono">
-                        {item.matricNo}
-                      </span>
-                      <span className="px-2 py-0.5 bg-slate-100 text-slate-600 font-bold text-[10px] rounded-md">
-                        {item.category}
+                      <span className="text-slate-500 text-[11px] font-medium flex items-center gap-1">
+                        <ShieldCheck size={12} className="text-emerald-600" />
+                        Anonymous Student
                       </span>
                     </div>
 
                     <h3 className="font-extrabold text-slate-900 text-sm">
-                      {item.subject}
+                      {item.title}
                     </h3>
 
                     <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
@@ -278,11 +313,7 @@ export default function AdminFeedbackPage() {
                     <div className="flex items-center gap-4 text-[10px] text-slate-400 pt-1">
                       <span className="flex items-center gap-1">
                         <Clock size={12} />
-                        {item.dateSent}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Mail size={12} />
-                        {item.senderEmail}
+                        {new Date(item.created_at).toLocaleString()}
                       </span>
                     </div>
                   </div>
@@ -290,34 +321,35 @@ export default function AdminFeedbackPage() {
                   {/* Status & Actions */}
                   <div className="flex items-center gap-2 shrink-0 self-end sm:self-start">
                     <span
-                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
-                        item.status === "Resolved"
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border capitalize ${
+                        item.status === "resolved"
                           ? "bg-emerald-50 text-emerald-700 border-emerald-100"
                           : "bg-amber-50 text-amber-700 border-amber-100"
                       }`}
                     >
-                      {item.status === "Resolved" ? (
+                      {item.status === "resolved" ? (
                         <CheckCircle2 size={12} />
                       ) : (
                         <AlertCircle size={12} />
                       )}
-                      {item.status}
+                      {item.status || "new"}
                     </span>
 
                     <button
                       onClick={() => setSelectedFeedback(item)}
-                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 transition-colors cursor-pointer"
+                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 transition-colors cursor-pointer flex items-center gap-1"
                     >
-                      View & Reply
+                      <Eye size={14} />
+                      <span>View</span>
                     </button>
 
                     <button
-                      onClick={() => toggleStatus(item.id)}
+                      onClick={() => toggleStatus(item.id, item.status)}
                       className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
                       title={
-                        item.status === "Pending"
-                          ? "Mark as Resolved"
-                          : "Mark as Pending"
+                        item.status === "resolved"
+                          ? "Mark as Unresolved"
+                          : "Mark as Resolved"
                       }
                     >
                       <CheckCircle2 size={16} />
@@ -326,7 +358,7 @@ export default function AdminFeedbackPage() {
                     <button
                       onClick={() => handleDelete(item.id)}
                       className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                      title="Delete Message"
+                      title="Delete Entry"
                     >
                       <Trash2 size={16} />
                     </button>
@@ -338,70 +370,61 @@ export default function AdminFeedbackPage() {
         </main>
       </div>
 
-      {/* View & Reply Drawer Modal */}
+      {/* View Drawer Modal */}
       {selectedFeedback && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-xl w-full p-6 space-y-5 shadow-xl border border-slate-100 relative">
             <button
               onClick={() => setSelectedFeedback(null)}
-              className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+              className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1 rounded-lg cursor-pointer"
             >
               <X size={18} />
             </button>
 
-            <div className="space-y-1 pr-6">
-              <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 font-bold text-[10px] rounded-full border border-emerald-100">
-                {selectedFeedback.category}
-              </span>
+            <div className="space-y-1.5 pr-6">
+              <div>{renderCategoryBadge(selectedFeedback.type)}</div>
               <h3 className="font-extrabold text-slate-900 text-lg">
-                {selectedFeedback.subject}
+                {selectedFeedback.title}
               </h3>
               <p className="text-xs text-slate-400">
-                From{" "}
-                <strong className="text-slate-700">
-                  {selectedFeedback.senderName}
-                </strong>{" "}
-                ({selectedFeedback.senderEmail}) on {selectedFeedback.dateSent}
+                Submitted anonymously on{" "}
+                {new Date(selectedFeedback.created_at).toLocaleString()}
               </p>
             </div>
 
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs text-slate-700 leading-relaxed max-h-48 overflow-y-auto">
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs text-slate-700 leading-relaxed max-h-60 overflow-y-auto whitespace-pre-wrap">
               {selectedFeedback.message}
             </div>
 
-            {/* Quick Reply Form */}
-            <form onSubmit={handleSendReply} className="space-y-3 pt-2">
-              <label className="block text-xs font-bold text-slate-800">
-                Send Reply / Response
-              </label>
-              <textarea
-                rows="3"
-                value={replyMessage}
-                onChange={(e) => setReplyMessage(e.target.value)}
-                placeholder="Type your response to send directly to the student's email..."
-                className="w-full p-3 text-xs rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
-              />
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() =>
+                  toggleStatus(selectedFeedback.id, selectedFeedback.status)
+                }
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  selectedFeedback.status === "resolved"
+                    ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
+                    : "bg-emerald-700 text-white hover:bg-emerald-800"
+                }`}
+              >
+                <CheckCircle2 size={14} />
+                <span>
+                  {selectedFeedback.status === "resolved"
+                    ? "Mark as Unresolved"
+                    : "Mark as Resolved"}
+                </span>
+              </button>
 
-              <div className="flex items-center justify-between pt-1">
-                <button
-                  type="button"
-                  onClick={() => toggleStatus(selectedFeedback.id)}
-                  className="text-xs font-bold text-slate-600 hover:text-emerald-700 cursor-pointer"
-                >
-                  {selectedFeedback.status === "Pending"
-                    ? "Mark Resolved without email"
-                    : "Mark as Pending"}
-                </button>
-
-                <button
-                  type="submit"
-                  className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer"
-                >
-                  <Send size={14} />
-                  <span>Send Reply</span>
-                </button>
-              </div>
-            </form>
+              <button
+                type="button"
+                onClick={() => handleDelete(selectedFeedback.id)}
+                className="px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
+              >
+                <Trash2 size={14} />
+                <span>Delete</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
