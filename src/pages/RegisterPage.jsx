@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import mssnLogo from "../assets/MSSN_logo.jpg";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
@@ -28,13 +28,58 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // NEW: Password Strength State
+  const [passwordStrength, setPasswordStrength] = useState({
+    score: 0, // 0-4 scale
+    label: "", // Text like "Weak", "Strong"
+    color: "", // Tailwind color class
+  });
+
   // Notification Modal State
   const [modal, setModal] = useState({
     isOpen: false,
-    type: "", // 'success' or 'error'
+    type: "",
     title: "",
     message: "",
   });
+
+  // NEW: Calculate Password Strength Logic
+  // This runs every time 'password' changes
+  useEffect(() => {
+    const calculateStrength = (pass) => {
+      let score = 0;
+
+      // Rule 1: Length check
+      if (pass.length >= 8) score += 1;
+
+      // Rule 2: Contains Number
+      if (/\d/.test(pass)) score += 1;
+
+      // Rule 3: Contains Uppercase & Lowercase
+      if (/[a-z]/.test(pass) && /[A-Z]/.test(pass)) score += 1;
+
+      // Rule 4: Contains Special Character
+      if (/[^A-Za-z0-9]/.test(pass)) score += 1;
+
+      // Map score to UI properties
+      switch (score) {
+        case 0:
+          return { score: 0, label: "", color: "bg-slate-200" };
+        case 1:
+          return { score: 1, label: "Weak", color: "bg-red-500" };
+        case 2:
+          return { score: 2, label: "Fair", color: "bg-orange-500" };
+        case 3:
+          return { score: 3, label: "Good", color: "bg-blue-500" };
+        case 4:
+          return { score: 4, label: "Strong", color: "bg-emerald-500" };
+        default:
+          return { score: 0, label: "", color: "bg-slate-200" };
+      }
+    };
+
+    setPasswordStrength(calculateStrength(password));
+  }, [password]);
 
   // Helper function to close modal
   const closeModal = () => {
@@ -55,6 +100,18 @@ export default function RegisterPage() {
         type: "error",
         title: "Missing Information",
         message: "Please fill in all fields before submitting.",
+      });
+      return;
+    }
+
+    // NEW: Prevent submission if password isn't strong enough (Score < 3 means not "Good")
+    if (passwordStrength.score < 3) {
+      setModal({
+        isOpen: true,
+        type: "error",
+        title: "Weak Password",
+        message:
+          "Please choose a stronger password (at least 8 chars, mix of letters, numbers & symbols).",
       });
       return;
     }
@@ -221,7 +278,7 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* Password */}
+            {/* Password with Strength Checker */}
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold text-slate-700">
                 Create Password
@@ -235,7 +292,7 @@ export default function RegisterPage() {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Minimum 6 characters"
+                  placeholder="Minimum 8 characters recommended"
                   className="w-full pl-10 pr-11 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all bg-white"
                 />
                 <button
@@ -246,13 +303,51 @@ export default function RegisterPage() {
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
+
+              {/* NEW: Password Strength Indicator UI */}
+              {password && (
+                <div className="mt-2 space-y-1">
+                  <div className="flex justify-between items-center text-[10px] font-medium">
+                    <span className="text-slate-500">Password Strength:</span>
+                    <span
+                      className={
+                        passwordStrength.score === 1
+                          ? "text-red-500"
+                          : passwordStrength.score === 2
+                            ? "text-orange-500"
+                            : passwordStrength.score === 3
+                              ? "text-blue-500"
+                              : passwordStrength.score === 4
+                                ? "text-emerald-500"
+                                : "text-slate-400"
+                      }
+                    >
+                      {passwordStrength.label}
+                    </span>
+                  </div>
+                  {/* Progress Bar Track */}
+                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                    {/* Animated Fill Bar */}
+                    <div
+                      className={`h-full transition-all duration-300 ease-out ${passwordStrength.color}`}
+                      style={{
+                        width: `${(passwordStrength.score / 4) * 100}%`,
+                      }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Use 8+ characters with a mix of letters, numbers & symbols.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Submit CTA */}
+            {/* NEW: Disabled if password strength is less than 3 ("Good") */}
             <button
               type="submit"
-              disabled={loading}
-              className="w-full py-3.5 px-6 text-slate-950 font-bold bg-gradient-to-r from-emerald-400 via-emerald-400 to-lime-300 rounded-xl shadow-md shadow-emerald-500/10 hover:shadow-lg hover:shadow-emerald-500/20 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 text-sm"
+              disabled={loading || passwordStrength.score < 3}
+              className="w-full py-3.5 px-6 text-slate-950 font-bold bg-gradient-to-r from-emerald-400 via-emerald-400 to-lime-300 rounded-xl shadow-md shadow-emerald-500/10 hover:shadow-lg hover:shadow-emerald-500/20 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 transition-all flex items-center justify-center gap-2 text-sm"
             >
               {loading ? "Creating Account..." : "Create Account"}{" "}
               <ArrowRight size={18} />
