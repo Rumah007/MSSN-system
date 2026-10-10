@@ -87,6 +87,19 @@ export default function RegisterPage() {
       return;
     }
 
+    // Strict Email Format Regex Check (Ensures it's a real structured email like user@domain.com)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setModal({
+        isOpen: true,
+        type: "error",
+        title: "Invalid Email Address",
+        message:
+          "Please enter a valid, properly formatted email address (e.g., name@example.com).",
+      });
+      return;
+    }
+
     if (passwordStrength.score < 3) {
       setModal({
         isOpen: true,
@@ -101,7 +114,6 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      // Pass metadata directly inside options.data
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email,
         password: password,
@@ -114,9 +126,7 @@ export default function RegisterPage() {
       });
 
       if (authError) throw authError;
-      console.log(authData);
 
-      // Detect if user already exists (identities array will be empty)
       if (authData.user && authData.user.identities?.length === 0) {
         setModal({
           isOpen: true,
@@ -133,7 +143,7 @@ export default function RegisterPage() {
         type: "success",
         title: "Registration Successful!",
         message:
-          "Your account has been created. Please check your email inbox to verify your address before logging in.",
+          "Your account has been created successfully. You can now log in right away.",
       });
     } catch (error) {
       setModal({
