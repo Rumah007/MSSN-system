@@ -17,7 +17,6 @@ import { supabase } from "../../supabaseClient";
 export default function ExcoDirectory() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedLevel, setSelectedLevel] = useState("All");
   const [selectedStudent, setSelectedStudent] = useState(null);
 
   const [members, setMembers] = useState([]);
@@ -45,7 +44,7 @@ export default function ExcoDirectory() {
     fetchProfiles();
   }, []);
 
-  // Filtering Logic
+  // Filtering Logic (Search query only)
   const filteredMembers = members.filter((member) => {
     const nameMatch = member.full_name
       ?.toLowerCase()
@@ -57,13 +56,7 @@ export default function ExcoDirectory() {
       ?.toLowerCase()
       .includes(searchQuery.toLowerCase());
 
-    const matchesSearch = nameMatch || deptMatch || emailMatch;
-
-    // Optional level filtering if level field exists, otherwise pass through
-    const matchesLevel =
-      selectedLevel === "All" || member.level === selectedLevel;
-
-    return matchesSearch && matchesLevel;
+    return nameMatch || deptMatch || emailMatch;
   });
 
   return (
@@ -110,40 +103,20 @@ export default function ExcoDirectory() {
             </div>
           </div>
 
-          {/* Search & Filter Controls */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row items-center gap-3">
-              {/* Search Bar */}
-              <div className="relative flex-1 w-full">
-                <Search
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-                  size={16}
-                />
-                <input
-                  type="text"
-                  placeholder="Search by student name, department, or email..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-teal-500 text-slate-800 placeholder:text-slate-400"
-                />
-              </div>
-
-              {/* Level Filter Pills */}
-              <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
-                {["All", "100L", "200L", "300L", "400L"].map((lvl) => (
-                  <button
-                    key={lvl}
-                    onClick={() => setSelectedLevel(lvl)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
-                      selectedLevel === lvl
-                        ? "bg-teal-600 text-white"
-                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                    }`}
-                  >
-                    {lvl}
-                  </button>
-                ))}
-              </div>
+          {/* Search Bar Control */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+            <div className="relative w-full">
+              <Search
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                size={16}
+              />
+              <input
+                type="text"
+                placeholder="Search by student name, department, or email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-teal-500 text-slate-800 placeholder:text-slate-400"
+              />
             </div>
           </div>
 
@@ -172,7 +145,7 @@ export default function ExcoDirectory() {
                   No student records match your query
                 </p>
                 <p className="text-xs text-slate-400">
-                  Try adjusting search parameters or clearing filters.
+                  Try adjusting search parameters.
                 </p>
               </div>
             ) : (

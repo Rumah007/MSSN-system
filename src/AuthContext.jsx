@@ -15,10 +15,10 @@ export function AuthProvider({ children }) {
         .from("profiles")
         .select("*")
         .eq("id", userId)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
-      setProfile(data);
+      setProfile(data); // Will be null if no row matches
     } catch (err) {
       console.error("Error fetching profile:", err.message);
       setProfile(null);

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "../../supabaseClient"; // Adjust path to match your project setup
+import { supabase } from "../../supabaseClient";
 import AdminSidebar from "../admin/components/AdminSidebar";
 import {
   Users,
@@ -9,8 +9,6 @@ import {
   Mail,
   Phone,
   Menu,
-  CheckCircle2,
-  XCircle,
   ShieldCheck,
   UserPlus,
   X,
@@ -21,7 +19,6 @@ export default function AdminMembersPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("All");
-  const [levelFilter, setLevelFilter] = useState("All");
 
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -123,7 +120,7 @@ export default function AdminMembersPage() {
     setIsPromoteModalOpen(false);
   };
 
-  // Filtering Logic
+  // Filtering Logic (Search + Department only)
   const filteredMembers = members.filter((member) => {
     const matchesSearch =
       (member.full_name || "")
@@ -136,9 +133,8 @@ export default function AdminMembersPage() {
 
     const matchesDept =
       departmentFilter === "All" || member.department === departmentFilter;
-    const matchesLevel = levelFilter === "All" || member.level === levelFilter;
 
-    return matchesSearch && matchesDept && matchesLevel;
+    return matchesSearch && matchesDept;
   });
 
   return (
@@ -242,7 +238,7 @@ export default function AdminMembersPage() {
                 <select
                   value={departmentFilter}
                   onChange={(e) => setDepartmentFilter(e.target.value)}
-                  className="w-full md:w-48 px-3 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
+                  className="w-full md:w-56 px-3 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
                 >
                   <option value="All">All Departments</option>
                   <option value="Computer Science">Computer Science</option>
@@ -250,19 +246,6 @@ export default function AdminMembersPage() {
                   <option value="Physics">Physics</option>
                   <option value="Medicine & Surgery">Medicine & Surgery</option>
                   <option value="Economics">Economics</option>
-                </select>
-
-                <select
-                  value={levelFilter}
-                  onChange={(e) => setLevelFilter(e.target.value)}
-                  className="w-full md:w-32 px-3 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
-                >
-                  <option value="All">All Levels</option>
-                  <option value="100L">100L</option>
-                  <option value="200L">200L</option>
-                  <option value="300L">300L</option>
-                  <option value="400L">400L</option>
-                  <option value="500L">500L</option>
                 </select>
               </div>
             </div>
@@ -276,7 +259,7 @@ export default function AdminMembersPage() {
                   <tr>
                     <th className="px-5 py-3.5">Student Info</th>
                     <th className="px-5 py-3.5">Matric No</th>
-                    <th className="px-5 py-3.5">Dept & Level</th>
+                    <th className="px-5 py-3.5">Department</th>
                     <th className="px-5 py-3.5">Contact</th>
                     <th className="px-5 py-3.5">Role / Status</th>
                     <th className="px-5 py-3.5 text-right">Exco Actions</th>
@@ -340,9 +323,6 @@ export default function AdminMembersPage() {
                           <p className="font-medium text-slate-800">
                             {member.department || "Unassigned"}
                           </p>
-                          <span className="inline-block mt-0.5 px-2 py-0.2 bg-slate-100 text-slate-600 font-bold text-[10px] rounded-md">
-                            {member.level || "N/A"}
-                          </span>
                         </td>
 
                         <td className="px-5 py-4 space-y-0.5">

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import mssnLogo from "../assets/MSSN_logo.jpg";
 import NavBar from "../components/NavBar";
-import { useAuth } from "../AuthContext"; // Adjust import path if needed
-import { supabase } from "../supabaseClient"; // Adjust import path to your Supabase client
+import { useAuth } from "../AuthContext";
+import { supabase } from "../supabaseClient";
 import {
   Megaphone,
   ArrowRight,
@@ -19,6 +20,8 @@ import {
   ExternalLink,
   Music,
   Play,
+  ShieldAlert,
+  LayoutDashboard,
 } from "lucide-react";
 
 export default function LandingPage() {
@@ -83,7 +86,7 @@ export default function LandingPage() {
     fetchEvents();
   }, []);
 
-  // Fetch Resources (Media & PDFs) from Supabase
+  // Fetch Resources from Supabase
   useEffect(() => {
     async function fetchResources() {
       try {
@@ -107,7 +110,7 @@ export default function LandingPage() {
     fetchResources();
   }, []);
 
-  // Helper: Format Date String
+  // Format Helpers
   const formatDate = (dateStr) => {
     if (!dateStr) return "";
     return new Date(dateStr).toLocaleDateString("en-US", {
@@ -117,7 +120,6 @@ export default function LandingPage() {
     });
   };
 
-  // Helper: Format 24h Time (HH:MM:SS) to 12h AM/PM
   const formatTime = (timeStr) => {
     if (!timeStr) return "";
     const [hours, minutes] = timeStr.split(":");
@@ -127,7 +129,6 @@ export default function LandingPage() {
     return `${formattedHours}:${minutes} ${ampm}`;
   };
 
-  // Helper: Get Icon by Resource Type Enum
   const getResourceIcon = (type) => {
     switch (type?.toLowerCase()) {
       case "video":
@@ -136,8 +137,6 @@ export default function LandingPage() {
         return <ImageIcon size={28} />;
       case "audio":
         return <Music size={28} />;
-      case "pdf":
-      case "doc":
       default:
         return <FileText size={28} />;
     }
@@ -198,7 +197,6 @@ export default function LandingPage() {
             <button
               onClick={() => setShowAlertBanner(false)}
               className="text-emerald-300 hover:text-white p-1 rounded-md transition-colors cursor-pointer"
-              aria-label="Close alert"
             >
               <X size={16} />
             </button>
@@ -206,6 +204,31 @@ export default function LandingPage() {
         )}
 
         <NavBar />
+
+        {/* Role-Based Return Navigation Banner */}
+        {user && (profile?.is_admin || profile?.is_exco) && (
+          <div className="bg-emerald-50 border-b border-emerald-200 px-4 py-2 relative z-20">
+            <div className="max-w-5xl mx-auto flex items-center justify-between text-xs sm:text-sm">
+              <div className="flex items-center gap-2 text-emerald-900 font-medium">
+                <ShieldAlert size={16} className="text-emerald-700 shrink-0" />
+                <span>
+                  You are logged in as an{" "}
+                  <strong>
+                    {profile.is_admin ? "Administrator" : "Executive"}
+                  </strong>
+                  .
+                </span>
+              </div>
+              <Link
+                to={profile.is_admin ? "/admin/dashboard" : "/exco/dashboard"}
+                className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-xs transition-colors"
+              >
+                <LayoutDashboard size={14} />
+                <span>Go to Dashboard</span>
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* Hero Section */}
         <section className="relative z-10 pt-12 pb-16 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto text-center space-y-6">
@@ -250,18 +273,18 @@ export default function LandingPage() {
               </button>
             ) : (
               <>
-                <a
-                  href="/login"
+                <Link
+                  to="/login"
                   className="w-full sm:w-auto px-8 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
                 >
                   Sign In <ArrowRight size={18} />
-                </a>
-                <a
-                  href="/register"
+                </Link>
+                <Link
+                  to="/register"
                   className="w-full sm:w-auto px-8 py-3.5 text-slate-700 bg-slate-100 border border-slate-200 font-semibold rounded-xl hover:bg-slate-200 transition-all text-center"
                 >
                   Create Account
-                </a>
+                </Link>
               </>
             )}
           </div>
@@ -278,7 +301,7 @@ export default function LandingPage() {
           )}
         </section>
 
-        {/* Public Announcements Broadcast (Live Supabase Data) */}
+        {/* Public Announcements Broadcast */}
         <section
           id="announcements"
           className="relative z-10 py-12 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto border-t border-slate-100"
@@ -336,9 +359,9 @@ export default function LandingPage() {
                     <span className="text-[10px] font-semibold text-slate-500 bg-slate-50 px-2 py-0.5 rounded capitalize">
                       {item.category || "General"}
                     </span>
-                    <button className="text-xs font-bold text-emerald-700 hover:text-emerald-900 inline-flex items-center gap-0.5 cursor-pointer">
+                    <span className="text-xs font-bold text-emerald-700 inline-flex items-center gap-0.5">
                       Details <ChevronRight size={14} />
-                    </button>
+                    </span>
                   </div>
                 </div>
               ))}
@@ -346,7 +369,7 @@ export default function LandingPage() {
           )}
         </section>
 
-        {/* Upcoming Events Section (Live Data) */}
+        {/* Upcoming Events Section */}
         <section
           id="events"
           className="relative z-10 py-12 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto border-t border-slate-100"
@@ -413,12 +436,12 @@ export default function LandingPage() {
                   </div>
 
                   <div className="pt-2 border-t border-slate-100 flex justify-end">
-                    <a
-                      href="/events"
+                    <Link
+                      to="/events"
                       className="text-xs font-bold text-emerald-700 hover:text-emerald-900 inline-flex items-center gap-0.5"
                     >
                       Register / Info <ChevronRight size={14} />
-                    </a>
+                    </Link>
                   </div>
                 </div>
               ))}
@@ -426,7 +449,7 @@ export default function LandingPage() {
           )}
         </section>
 
-        {/* Media & Resources Highlights (Live Data including Image & Video Previews) */}
+        {/* Media & Resources Highlights */}
         <section
           id="media"
           className="relative z-10 py-12 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto border-t border-slate-100"
@@ -463,7 +486,6 @@ export default function LandingPage() {
                     key={item.id}
                     className="rounded-xl border border-slate-200 overflow-hidden bg-white hover:border-emerald-300 transition-all flex flex-col justify-between"
                   >
-                    {/* Media Preview Stage */}
                     <div className="h-40 bg-slate-900 flex items-center justify-center relative overflow-hidden group">
                       {type === "image" ? (
                         <img
@@ -494,7 +516,6 @@ export default function LandingPage() {
                           </span>
                         </div>
                       ) : (
-                        /* Default / PDF / Document fallback view */
                         <div className="w-full h-full bg-gradient-to-br from-slate-800 to-slate-900 flex flex-col items-center justify-center text-slate-300 p-4 text-center">
                           <div className="w-12 h-12 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center mb-1">
                             <FileText size={24} className="text-emerald-400" />
@@ -505,14 +526,12 @@ export default function LandingPage() {
                         </div>
                       )}
 
-                      {/* Type Label Badge */}
                       <span className="absolute bottom-2 right-2 text-[10px] bg-black/70 backdrop-blur-xs text-white px-2 py-0.5 rounded font-mono uppercase tracking-wider flex items-center gap-1 border border-white/10 z-10">
                         {getResourceIcon(type)}
                         {item.type}
                       </span>
                     </div>
 
-                    {/* Card Details */}
                     <div className="p-4 space-y-2 flex-1 flex flex-col justify-between">
                       <div>
                         <span className="text-[10px] text-slate-400 font-medium">
