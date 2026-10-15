@@ -4,7 +4,7 @@ import { BookOpen, Users, Heart, Award, Target, Compass } from "lucide-react";
 
 export default function About() {
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
       {/* Top Navigation */}
       <NavBar />
 
